@@ -159,10 +159,19 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
     e.preventDefault();
 
     let sid = $('input[name="sid_number"]').val().trim();
-    let sidFormat = /^\d{2}-\d{1}-\d{1}-\d{4}$/;
+    let contact = $('input[name="s_contact"]').val().trim();
 
+    // Validate School ID Format: 21-1-1-0221
+    let sidFormat = /^\d{2}-\d{1}-\d{1}-\d{4}$/;
     if (!sidFormat.test(sid)) {
         toastr.warning('School ID must be in the format: 21-1-1-0221');
+        return;
+    }
+
+    // Validate Contact Number Format: 09XXXXXXXXX
+    let contactFormat = /^09\d{9}$/;
+    if (!contactFormat.test(contact)) {
+        toastr.warning('Contact number must be in the format: 09090909099');
         return;
     }
 
@@ -181,7 +190,7 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
         if (data == 1) {
             toastr.success('Successfully signup', 'Redirecting page');
             setTimeout(function() {
-                window.location = 'login';
+                window.location = 'login.php'; // corrected redirect to login.php
             }, 3000);
         } else if (data == 2) {
             toastr.warning('Student already exists');
@@ -197,34 +206,45 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
 
 $('.frm_faculty_sign').submit(function(e){
 	e.preventDefault();
+
+	let contact = $('input[name="f_contact"]').val().trim();
+
+	// Validate contact number format
+	let contactFormat = /^09\d{9}$/;
+	if (!contactFormat.test(contact)) {
+		toastr.warning('Contact number must be in the format: 09090909099');
+		return;
+	}
+
 	var datas = $(this).serialize()+'&key=sign_faculty';
 
 	$.ajax({
 		type: "POST",
 		data: datas,
-		url : '../class/add/add'
+		url : '../class/add/add',
+		beforeSend: function() {
+			$('.btn_faculty').attr('disabled', true);
+		}
 	})
 	.done(function(data){
 		console.log(data);
 		$('.btn_faculty').removeAttr('disabled');
 		if(data == 1){
-			
 			toastr.success('Successfully signup', 'Redirecting page');
 			setTimeout(function(){
-				window.location = 'login';
+				window.location = 'login.php'; // Ensure it redirects to login.php
 			},3000);
-
 		}else if(data == 2){
-			toastr.warning('Faculty already exist');
+			toastr.warning('Faculty already exists');
 		}else if(data == 0){
 			toastr.error('Failed to signup');
 		}
 	})
 	.fail(function(data){
-		console.log(data);
+		console.log(data); 
 	});
-
 });
+
 
 
 $('.frm_addequipment').submit(function(e){

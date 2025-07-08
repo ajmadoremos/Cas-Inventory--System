@@ -1,8 +1,7 @@
-
-  <div class="container-fluid">
+<div class="container-fluid">
   <div class="panel">
     <div class="panel-body">
-      
+
       <!-- Role Selection Buttons -->
       <div class="row text-center">
         <div class="col-md-4 col-md-offset-2">
@@ -28,12 +27,11 @@
       <!-- Signup Forms -->
       <div class="row">
         <div class="col-md-6 col-md-offset-3">
-          
+
           <!-- Student Form -->
           <form class="frm_student_signs" id="student-form">
             <h4>Sign up - Student</h4>
             <hr>
-            <!-- student inputs -->
             <div class="form-group">
               <label>School ID Number</label>
               <input type="text" name="sid_number" class="form-control" placeholder="e.g. 21-1-1-0221" required maxlength="14">
@@ -56,7 +54,8 @@
             </div>
             <div class="form-group">
               <label>Contact Number</label>
-              <input type="tel" name="s_contact" class="form-control" required>
+              <input type="number" name="s_contact" class="form-control" pattern="^09\d{9}$" maxlength="11" placeholder="e.g. 09091234567" required>
+              <small class="text-muted">Format: 11-digit number (e.g. 09091234567)</small>
             </div>
             <div class="form-group">
               <label>Department</label>
@@ -87,7 +86,6 @@
             </div>
             <div class="form-group text-center">
               <button type="submit" class="btn btn-success btn_student">Sign up</button><br>
-              
             </div>
           </form>
 
@@ -95,7 +93,6 @@
           <form class="frm_faculty_sign" id="faculty-form" style="display: none;">
             <h4>Sign up - Faculty</h4>
             <hr>
-            <!-- faculty inputs -->
             <div class="form-group">
               <label>School ID Number</label>
               <input type="number" name="f_id" class="form-control" required>
@@ -118,7 +115,8 @@
             </div>
             <div class="form-group">
               <label>Contact Number</label>
-              <input type="tel" name="f_contact" class="form-control" required>
+              <input type="tels" name="f_contact" class="form-control" pattern="^09\d{9}$" maxlength="11" placeholder="e.g. 09091234567" required>
+              <small class="text-muted">Format: 11-digit number (e.g. 09091234567)</small>
             </div>
             <div class="form-group">
               <label>Department</label>
@@ -135,13 +133,11 @@
             </div>
             <div class="form-group text-center">
               <button type="submit" class="btn btn-primary btn_faculty">Sign up</button><br>
-              
             </div>
           </form>
 
-        
+        </div>
       </div>
-
     </div>
   </div>
-
+</div>
