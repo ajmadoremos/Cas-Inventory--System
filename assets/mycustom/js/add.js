@@ -132,21 +132,30 @@ $(document).on('click', '.delete-user', function(e){
 });
 
 
-// Auto-format school ID as user types
-$('#sid_number').on('input', function () {
-    let value = $(this).val().replace(/\D/g, ''); // digits only
-    let formatted = '';
+function toggleForms() {
+	const loginForm = document.getElementById('login-form');
+	const signupForm = document.getElementById('signup-form');
 
-    if (value.length > 0) formatted += value.substring(0, 2);
-    if (value.length > 2) formatted += '-' + value.substring(2, 3);
-    if (value.length > 3) formatted += '-' + value.substring(3, 4);
-    if (value.length > 4) formatted += '-' + value.substring(4, 8);
+	const isLoginVisible = loginForm.style.display !== 'none';
+	loginForm.style.display = isLoginVisible ? 'none' : 'block';
+	signupForm.style.display = isLoginVisible ? 'block' : 'none';
+}
 
-    $(this).val(formatted);
-});
+ $(document).ready(function () {
+    $('.student-btn').click(function () {
+      $('#student-form').show();
+      $('#faculty-form').hide();
+    });
 
-// Form submit handler with validation
-$('.frm_student_sign').submit(function(e) {
+    $('.faculty-btn').click(function () {
+      $('#student-form').hide();
+      $('#faculty-form').show();
+    });
+  });
+
+
+
+$(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs', function(e) {
     e.preventDefault();
 
     let sid = $('input[name="sid_number"]').val().trim();
@@ -175,7 +184,7 @@ $('.frm_student_sign').submit(function(e) {
                 window.location = 'login';
             }, 3000);
         } else if (data == 2) {
-            toastr.warning('Student already exist');
+            toastr.warning('Student already exists');
         } else if (data == 0) {
             toastr.error('Failed to signup');
         }
