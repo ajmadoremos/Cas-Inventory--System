@@ -190,7 +190,7 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
         if (data == 1) {
             toastr.success('Successfully signup', 'Redirecting page');
             setTimeout(function() {
-                window.location = 'login.php'; // corrected redirect to login.php
+                window.location = 'login'; // corrected redirect to login.php
             }, 3000);
         } else if (data == 2) {
             toastr.warning('Student already exists');
@@ -204,45 +204,52 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
 });
 
 
-$('.frm_faculty_sign').submit(function(e){
-	e.preventDefault();
+$(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign', function(e) {
+    e.preventDefault();
 
-	let contact = $('input[name="f_contact"]').val().trim();
+    let contact = $('input[name="f_contact"]').val().trim();
 
-	// Validate contact number format
-	let contactFormat = /^09\d{9}$/;
-	if (!contactFormat.test(contact)) {
-		toastr.warning('Contact number must be in the format: 09090909099');
-		return;
-	}
+    // ✅ Validate Contact Number Format: 09XXXXXXXXX
+    let contactFormat = /^09\d{9}$/;
+    if (!contactFormat.test(contact)) {
+        toastr.warning('Contact number must be in the format: 09090909099');
+        return;
+    }
 
-	var datas = $(this).serialize()+'&key=sign_faculty';
+    let datas = $(this).serialize() + '&key=sign_faculty';
 
-	$.ajax({
-		type: "POST",
-		data: datas,
-		url : '../class/add/add',
-		beforeSend: function() {
-			$('.btn_faculty').attr('disabled', true);
-		}
-	})
-	.done(function(data){
-		console.log(data);
-		$('.btn_faculty').removeAttr('disabled');
-		if(data == 1){
-			toastr.success('Successfully signup', 'Redirecting page');
-			setTimeout(function(){
-				window.location = 'login.php'; // Ensure it redirects to login.php
-			},3000);
-		}else if(data == 2){
-			toastr.warning('Faculty already exists');
-		}else if(data == 0){
-			toastr.error('Failed to signup');
-		}
-	})
-	.fail(function(data){
-		console.log(data); 
-	});
+    $.ajax({
+        type: "POST",
+        url: '../class/add/add',
+        data: datas,
+        beforeSend: function() {
+            $('.btn_faculty').attr('disabled', true);
+        }
+    })
+    .done(function(data) {
+        $('.btn_faculty').removeAttr('disabled');
+        data = data.trim(); // Trim spaces/newlines
+
+        console.log('✅ Server response:', data);
+
+        if (data == "1") {
+            toastr.success('Successfully signup', 'Redirecting page');
+            setTimeout(function() {
+                window.location = 'login'; // redirect to login.php
+            }, 3000);
+        } else if (data == "2") {
+            toastr.warning('Faculty already exists');
+        } else if (data == "0") {
+            toastr.error('Failed to signup');
+        } else {
+            toastr.error('Unexpected server response: ' + data);
+        }
+    })
+    .fail(function(jqXHR, textStatus, errorThrown) {
+        $('.btn_faculty').removeAttr('disabled');
+        toastr.error('AJAX failed: ' + textStatus);
+        console.error('❌ AJAX error:', textStatus, errorThrown);
+    });
 });
 
 
