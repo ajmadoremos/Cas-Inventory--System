@@ -51,7 +51,7 @@
 					$insert_count = $insert->rowCount();
 						
 						if($insert_count > 0){
-							echo "1";
+							echo "Student";
 						}else{
 							echo "0";
 						}
@@ -75,7 +75,7 @@
 					$insert_count = $insert->rowCount();
 						
 						if($insert_count > 0){
-							echo "1";
+							echo "Faculty";
 						}else{
 							echo "0";
 						}

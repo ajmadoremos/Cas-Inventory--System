@@ -190,7 +190,7 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
         $('.btn_student').removeAttr('disabled');
         data = data.trim();
 
-        if (data == "1") {
+        if (data == "Student") {
             toastr.success('Successfully signup', 'Redirecting page');
             form.reset(); // ✅ Clear the form
             setTimeout(function() {
@@ -239,7 +239,7 @@ $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign',
 
         console.log('✅ Server response:', data);
 
-        if (data == "1") {
+        if (data == "Faculty") {
             toastr.success('Successfully signup', 'Redirecting page');
             form.reset(); // ✅ Clear the form fields
             setTimeout(function() {
