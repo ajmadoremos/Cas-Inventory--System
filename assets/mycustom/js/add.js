@@ -176,6 +176,7 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
     }
 
     let datas = $(this).serialize() + '&key=sign_student';
+    let form = this; // cache reference to the form for reset
 
     $.ajax({
         type: "POST",
@@ -187,21 +188,26 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
     })
     .done(function(data) {
         $('.btn_student').removeAttr('disabled');
-        if (data == 1) {
+        data = data.trim();
+
+        if (data == "1") {
             toastr.success('Successfully signup', 'Redirecting page');
+            form.reset(); // ✅ Clear the form
             setTimeout(function() {
-                window.location = 'login'; // corrected redirect to login.php
+                window.location = 'login'; // redirect
             }, 3000);
-        } else if (data == 2) {
+        } else if (data == "2") {
             toastr.warning('Student already exists');
-        } else if (data == 0) {
+        } else if (data == "0") {
             toastr.error('Failed to signup');
         }
     })
     .fail(function(data) {
+        $('.btn_student').removeAttr('disabled');
         console.log(data);
     });
 });
+
 
 
 $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign', function(e) {
@@ -217,6 +223,7 @@ $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign',
     }
 
     let datas = $(this).serialize() + '&key=sign_faculty';
+    let form = this; // ✅ Reference to the form for resetting
 
     $.ajax({
         type: "POST",
@@ -228,12 +235,13 @@ $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign',
     })
     .done(function(data) {
         $('.btn_faculty').removeAttr('disabled');
-        data = data.trim(); // Trim spaces/newlines
+        data = data.trim();
 
         console.log('✅ Server response:', data);
 
         if (data == "1") {
             toastr.success('Successfully signup', 'Redirecting page');
+            form.reset(); // ✅ Clear the form fields
             setTimeout(function() {
                 window.location = 'login'; // redirect to login.php
             }, 3000);
@@ -251,6 +259,7 @@ $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign',
         console.error('❌ AJAX error:', textStatus, errorThrown);
     });
 });
+
 
 
 
