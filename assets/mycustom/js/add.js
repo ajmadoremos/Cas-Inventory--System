@@ -477,7 +477,7 @@ $('.add_student').click(function () {
       <hr>
       <div class="form-group">
         <label>School ID Number</label>
-        <input type="text" name="sid_number" class="form-control" required autocomplete="off" placeholder="e.g. 21-1-1-0221" maxlength="13" />
+        <input type="text" name="sid_number" class="form-control" required autocomplete="off" placeholder="e.g. 21-1-1-0221" maxlength="11" />
       </div>
       <div class="form-group">
         <label>First Name</label>
@@ -512,10 +512,7 @@ $('.add_student').click(function () {
           <option>BSIT</option>
         </select>
       </div>
-      <div class="form-group hide">
-        <label>Major</label>
-        <input type="text" name="s_major" class="form-control" autocomplete="off" />
-      </div>
+      
       <div class="form-group">
         <div class="row">
           <div class="col-md-6">
@@ -552,8 +549,8 @@ $('.add_student').click(function () {
   $(document).on('input', 'input[name="sid_number"]', function () {
     let val = $(this).val().replace(/[^0-9\-]/g, '');
     val = val.replace(/-+/g, '-');
-    if (val.length > 13) {
-      val = val.slice(0, 13);
+    if (val.length > 11) {
+      val = val.slice(0, 11);
     }
     $(this).val(val);
   });

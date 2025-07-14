@@ -42,11 +42,11 @@
             </div>
             <div class="form-group">
               <label>First Name</label>
-              <input type="text" name="s_fname" class="form-control" required>
+              <input type="text" name="s_fname" class="form-control text-capitalize" required>
             </div>
             <div class="form-group">
               <label>Last Name</label>
-              <input type="text" name="s_lname" class="form-control" required>
+              <input type="text" name="s_lname" class="form-control text-capitalize" required>
             </div>
             <div class="form-group">
               <label>Gender</label>
@@ -104,11 +104,11 @@
             </div>
             <div class="form-group">
               <label>First Name</label>
-              <input type="text" name="f_fname" class="form-control" required>
+              <input type="text" name="f_fname" class="form-control text-capitalize" required>
             </div>
             <div class="form-group">
               <label>Last Name</label>
-              <input type="text" name="f_lname" class="form-control" required>
+              <input type="text" name="f_lname" class="form-control text-capitalize" required>
             </div>
             <div class="form-group">
               <label>Gender</label>
