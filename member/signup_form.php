@@ -1,3 +1,6 @@
+<!-- Include jQuery if not yet -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <div class="container-fluid">
   <div class="panel">
     <div class="panel-body">
@@ -29,9 +32,10 @@
         <div class="col-md-6 col-md-offset-3">
 
           <!-- Student Form -->
-          <form class="frm_student_signs" id="student-form">
+          <form class="frm_student_signs" id="student-form" style="display: none;">
             <h4>Sign up - Student</h4>
             <hr>
+            <input type="hidden" name="type" value="Student">
             <div class="form-group">
               <label>School ID Number</label>
               <input type="text" name="sid_number" class="form-control" placeholder="e.g. 21-1-1-0221" required maxlength="14">
@@ -54,7 +58,7 @@
             </div>
             <div class="form-group">
               <label>Contact Number</label>
-              <input type="number" name="s_contact" class="form-control" pattern="^09\d{9}$" maxlength="11" placeholder="e.g. 09091234567" required>
+              <input type="number" name="s_contact" class="form-control" maxlength="11" placeholder="e.g. 09091234567" required>
               <small class="text-muted">Format: 11-digit number (e.g. 09091234567)</small>
             </div>
             <div class="form-group">
@@ -93,6 +97,7 @@
           <form class="frm_faculty_sign" id="faculty-form" style="display: none;">
             <h4>Sign up - Faculty</h4>
             <hr>
+            <input type="hidden" name="type" value="Faculty">
             <div class="form-group">
               <label>School ID Number</label>
               <input type="number" name="f_id" class="form-control" required>
@@ -115,7 +120,7 @@
             </div>
             <div class="form-group">
               <label>Contact Number</label>
-              <input type="tels" name="f_contact" class="form-control" pattern="^09\d{9}$" maxlength="11" placeholder="e.g. 09091234567" required>
+              <input type="tel" name="f_contact" class="form-control" maxlength="11" placeholder="e.g. 09091234567" required>
               <small class="text-muted">Format: 11-digit number (e.g. 09091234567)</small>
             </div>
             <div class="form-group">
@@ -141,3 +146,4 @@
     </div>
   </div>
 </div>
+

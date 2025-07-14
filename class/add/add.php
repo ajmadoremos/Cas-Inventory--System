@@ -417,7 +417,7 @@
     $s_department = trim($_POST['s_department']);
     $s_year = trim($_POST['s_year']);
     $s_section = trim($_POST['s_section']);
-    $type = 1;
+    $type = trim($_POST['type']); // ✅ use actual string "Student"
 
     $add_function->sign_student(
         $sid_number, $s_fname, $s_lname, $s_gender, $s_contact,
@@ -426,16 +426,18 @@
     break;
 
 
-		case 'sign_faculty';
-		$f_id = trim($_POST['f_id']);
-		$f_fname = strtolower(trim($_POST['f_fname']));
-		$f_lname = strtolower(trim($_POST['f_lname']));
-		$f_gender = trim($_POST['f_gender']);
-		$f_contact = trim($_POST['f_contact']);
-		$f_department = trim($_POST['f_department']);
- 		$type = 2;
-		$add_function->sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type);
-		break;
+		case 'sign_faculty':
+    $f_id = trim($_POST['f_id']);
+    $f_fname = strtolower(trim($_POST['f_fname']));
+    $f_lname = strtolower(trim($_POST['f_lname']));
+    $f_gender = trim($_POST['f_gender']);
+    $f_contact = trim($_POST['f_contact']);
+    $f_department = trim($_POST['f_department']);
+    $type = trim($_POST['type']); // ✅ use actual string "Faculty"
+
+    $add_function->sign_faculty($f_id, $f_fname, $f_lname, $f_gender, $f_contact, $f_department, $type);
+    break;
+
 
 		case 'add_equipment';
 		$e_number = trim($_POST['e_number']);

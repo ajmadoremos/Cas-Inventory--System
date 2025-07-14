@@ -142,16 +142,19 @@ function toggleForms() {
 }
 
  $(document).ready(function () {
-    $('.student-btn').click(function () {
-      $('#student-form').show();
-      $('#faculty-form').hide();
-    });
-
-    $('.faculty-btn').click(function () {
-      $('#student-form').hide();
-      $('#faculty-form').show();
-    });
+  $('.student-btn').click(function () {
+    $('#student-form').show();
+    $('#faculty-form').hide();
+    $('input[name="type"]').val('Student'); // ✅ sets hidden type field
   });
+
+  $('.faculty-btn').click(function () {
+    $('#student-form').hide();
+    $('#faculty-form').show();
+    $('input[name="type"]').val('Faculty'); // ✅ sets hidden type field
+  });
+});
+
 
 
 
