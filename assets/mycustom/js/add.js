@@ -698,9 +698,3 @@ $('.add_faculty').click(function () {
 		});
 	});
 });
-
-
-
-
-
-
