@@ -1,3 +1,4 @@
+
 <?php 
 	include 'header.php';
 ?>
@@ -137,9 +138,11 @@
 											<th>Items</th>
 											<th>Reservation Date</th>
 											<th>Rooms</th>
-											<th>Action</th>
+											<th>Edit</th> <!-- ✅ new column for Edit button -->
+											<th>Action</th> <!-- ✅ for Accept & Cancel buttons -->
 										</tr>
 									</thead>
+
 								</table>
 							</div>
 
@@ -181,10 +184,10 @@
 						<input type="hidden" name="codereserve">
 					</div>
 					</div>
-					<!--<div class="modal-footer">
+					<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 						<button type="submit" class="btn btn-primary">Save changes</button>
-					</div>-->
+					</div>
 				</form>
 			</div>
 		</div>
@@ -218,6 +221,4 @@
 </div>
 
 
-
 <?php include 'footer.php'; ?>
-

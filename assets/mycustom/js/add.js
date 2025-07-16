@@ -696,29 +696,6 @@ $('.add_faculty').click(function () {
 	});
 });
 
-$(document).on('click', '.btn-edit', function () {
-  let code = $(this).data('id');
-  let items = $(this).data('items').split('<br/>').filter(i => i.trim() !== '');
-  
-  let itemsHtml = '';
-  items.forEach(function(item) {
-    itemsHtml += `
-      <div class="checkbox">
-        <label>
-          <input type="checkbox" name="approved_items[]" value="${item}" checked> ${item}
-        </label>
-      </div>`;
-  });
-  
-  $('#itemsChecklist').html(itemsHtml);
-  $('#reservation_code').val(code);
-
-  // ADD THIS LINE TO SET ALL ITEMS IN A HIDDEN INPUT
-  $('input[name="all_items"]').val(items.join('|'));
-
-  $('#editReservationModal').modal('show');
-});
-
 
 // Submit form
 $('#frm_edit_reservation').submit(function (e) {
@@ -756,6 +733,50 @@ $('#frm_edit_reservation').submit(function (e) {
     }
   });
 });
+$(document).ready(function () {
 
+	// Initialize the DataTable
+	$('.tbl_pendingres').DataTable({
+		ajax: 'fetch_reservation.php?type=pending',
+		columns: [
+			{ data: 0 },
+			{ data: 1 },
+			{ data: 2 },
+			{ data: 3 },
+			{ data: 4 }, // Edit
+			{ data: 5 }  // Accept/Cancel
+		]
+	});
 
+	// ✅ Add Cancel handler
+	$(document).on('click', '.btn-cancel', function () {
+		const code = $(this).data('id');
+		$('input[name="codereserve"]').val(code);
+		$('#myModal').modal('show');
+	});
+
+	// ✅ Add Edit handler
+	$(document).on('click', '.btn-edit', function () {
+		const code = $(this).data('id');
+		const items = $(this).data('items');
+
+		let checklistHtml = '';
+		items.split('<br/>').forEach(function (item) {
+			if (item.trim()) {
+				checklistHtml += `
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" name="approved_items[]" value="${item.trim()}">
+							${item.trim()}
+						</label>
+					</div>`;
+			}
+		});
+
+		$('#itemsChecklist').html(checklistHtml);
+		$('#reservation_code').val(code);
+		$('#editReservationModal').modal('show');
+	});
+
+});
 
