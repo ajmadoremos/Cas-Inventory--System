@@ -674,7 +674,12 @@
 			$count = $sql->rowCount();
 			if($count > 0){
 				foreach ($fetch as $key => $value) {
-				$button = "<button class='btn btn-primary btn-accept' data-id='".$value['reservation_code']."'>
+				$button = "<button class='btn btn-success btn-edit' 
+        data-id='".$value['reservation_code']."' 
+        data-items=\"".htmlspecialchars($value['item_borrow'], ENT_QUOTES)."\">
+    Edit
+</button>
+				<button class='btn btn-primary btn-accept' data-id='".$value['reservation_code']."'>
 							Accept
 							<i class='fa fa-chevron-right'></i>
 							</button>

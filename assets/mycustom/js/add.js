@@ -695,3 +695,67 @@ $('.add_faculty').click(function () {
 		});
 	});
 });
+
+$(document).on('click', '.btn-edit', function () {
+  let code = $(this).data('id');
+  let items = $(this).data('items').split('<br/>').filter(i => i.trim() !== '');
+  
+  let itemsHtml = '';
+  items.forEach(function(item) {
+    itemsHtml += `
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" name="approved_items[]" value="${item}" checked> ${item}
+        </label>
+      </div>`;
+  });
+  
+  $('#itemsChecklist').html(itemsHtml);
+  $('#reservation_code').val(code);
+
+  // ADD THIS LINE TO SET ALL ITEMS IN A HIDDEN INPUT
+  $('input[name="all_items"]').val(items.join('|'));
+
+  $('#editReservationModal').modal('show');
+});
+
+
+// Submit form
+$('#frm_edit_reservation').submit(function (e) {
+  e.preventDefault();
+
+  const reservation_code = $('#reservation_code').val();
+  const admin_feedback = $('textarea[name="admin_feedback"]').val();
+  let approved_items = [];
+
+  $('input[name="approved_items[]"]:checked').each(function () {
+    approved_items.push($(this).val());
+  });
+
+  $.ajax({
+    url: 'update_reservation.php',
+    method: 'POST',
+    data: {
+      reservation_code: reservation_code,
+      admin_feedback: admin_feedback,
+      approved_items: approved_items
+    },
+    dataType: 'json',
+    success: function (response) {
+      if (response.status === 1) {
+        toastr.success(response.message);
+        $('#editReservationModal').modal('hide');
+        $('.tbl_pendingres').DataTable().ajax.reload(null, false);
+      } else {
+        toastr.error(response.message || 'Update failed');
+      }
+    },
+    error: function (xhr, status, error) {
+      console.error("AJAX Error:", xhr.responseText);
+      toastr.error("Server error. Check console.");
+    }
+  });
+});
+
+
+

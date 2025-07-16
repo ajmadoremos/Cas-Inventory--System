@@ -181,14 +181,43 @@
 						<input type="hidden" name="codereserve">
 					</div>
 					</div>
-					<div class="modal-footer">
+					<!--<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 						<button type="submit" class="btn btn-primary">Save changes</button>
-					</div>
+					</div>-->
 				</form>
 			</div>
 		</div>
 	</div>
+<!-- Reservation Edit Modal -->
+<div class="modal fade" id="editReservationModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <form id="frm_edit_reservation">
+        <div class="modal-header">
+          <h4 class="modal-title">Edit Pending Reservation</h4>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Items to Approve:</label>
+            <div id="itemsChecklist"></div>
+          </div>
+          <div class="form-group">
+            <label>Feedback (why some items are not approved):</label>
+            <textarea class="form-control" name="admin_feedback" id="admin_feedback" rows="4" required></textarea>
+          </div>
+          <input type="hidden" name="reservation_code" id="reservation_code">
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 
 
 <?php include 'footer.php'; ?>
+

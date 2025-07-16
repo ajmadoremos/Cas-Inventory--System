@@ -7,8 +7,8 @@
 
 body
 {
-    /*background: url(../img/bg.png);*/
-	background: #eeeeee;
+    background: url(../img/bg.png);
+	/* background: #eeeeee; */
 }
 
 .main {

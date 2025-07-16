@@ -490,7 +490,7 @@
 		$add_function->add_users($u_fname,$u_username,$u_password,$u_type);
 		break;
 
-		case 'addclient_reservation';
+		case 'addclient_';
 		$items = $_POST['reserve_item'];
 		$date = $_POST['reserved_date'];
 		$time = $_POST['reserved_time'];
