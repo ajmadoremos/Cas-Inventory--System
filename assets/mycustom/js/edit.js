@@ -826,19 +826,54 @@ table_user.on('click', 'a.edit-upass', function(e){
 
 tbl_pendingres.on('click', 'button.btn-accept', function(e){
 	e.preventDefault();
-	var a = $(this).attr('data-id');
+	
+	var code = $(this).attr('data-id');
+
+	// Get all checkboxes (both checked and unchecked)
+	var allItems = [];
+	var approvedItems = [];  
+
+	$('.item-checkbox[data-code="' + code + '"]').each(function () {
+		let itemText = $(this).val();
+		allItems.push(itemText);
+		if ($(this).is(':checked')) {
+			approvedItems.push(itemText);
+		}
+	});
+
+	// Determine if any items were disapproved (unchecked)
+	let hasDisapproved = approvedItems.length < allItems.length;
+
+	// Get admin feedback
+	var feedback = $('#admin_feedback_' + code).val()?.trim() || "";
+
+	// Construct remarks
+	let remarks = "";
+	if (hasDisapproved) {
+		if (feedback === "") {
+			toastr.warning("Please provide feedback for disapproved items.");
+			return;
+		}
+		remarks = `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`;
+	} else {
+		remarks = `All items approved: ${approvedItems.join(", ")}`;
+	}
+
+	// Send AJAX request
 	$.ajax({
 		type: "POST",
 		url: "../class/edit/edit",
 		data: {
 			key: 'accept_reservation',
-			code: a
+			code: code,
+			approved_items: approvedItems,
+			admin_feedback: remarks
 		}
 	})
 	.done(function(data){
 		console.log(data);
 		if(data > 0){
-			toastr.success('Successully accept reservation');
+			toastr.success('Successfully accepted reservation');
 			tbl_pendingres.ajax.reload(null,false);
 			tbl_reserved.ajax.reload(null,false);
 		}else{
@@ -846,6 +881,8 @@ tbl_pendingres.on('click', 'button.btn-accept', function(e){
 		}
 	});
 });
+
+
 
 tbl_pendingres.on('click', 'button.btn-cancel', function(e){
 	e.preventDefault();
@@ -895,6 +932,36 @@ $('.frm_cancelreservation').submit(function(e){
 	});
 });
 
+$(document).ready(function() {
+    // Edit Button
+    $(document).on('click', '.btn-edit', function() {
+        var id = $(this).data('id');
+        var listContainer = $('.item-list[data-id="' + id + '"]');
+        var items = listContainer.find('li');
+        var textarea = `
+            <div class="form-group mt-2">
+                <label><strong>Admin Feedback (why not approved):</strong></label>
+                <textarea class="form-control admin-feedback" data-id="`+id+`" rows="3" placeholder="Enter reason here..."></textarea>
+            </div>
+        `;
+
+        // Replace items with checkboxes
+        var html = "<ul>";
+        items.each(function() {
+            var text = $(this).text().trim();
+            if (text) {
+                html += `<li><label><input type="checkbox" class="item-checkbox" data-id="${id}" value="${text}" checked> ${text}</label></li>`;
+            }
+        });
+        html += "</ul>" + textarea;
+
+        listContainer.html(html);
+
+        $('.btn-edit[data-id="'+id+'"]').hide();
+        $('.btn-save[data-id="'+id+'"]').show();
+        $('.btn-cancel[data-id="'+id+'"]').show();
+    });
+});
 
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();

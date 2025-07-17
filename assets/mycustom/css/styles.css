@@ -51,7 +51,11 @@ td {
     /*border: none !important;*/
     border-bottom: #fff !important;
 }
-
+.btn-action-group .btn {
+        margin-right: 5px;
+        margin-bottom: 5px;
+        min-width: 60px;
+}
 #DataTables_Table_0_filter label {
     color: #5e5b5b;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
