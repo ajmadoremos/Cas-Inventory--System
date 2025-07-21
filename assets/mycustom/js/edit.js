@@ -829,23 +829,35 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
 
 	const code = $(this).data('id');
 
-	// Collect all items (checkboxes)
-	const approvedItems = [];
-	const allItems = [];
+	let approvedItems = [];
+	let allItems = [];
 
-	$(`.item-checkbox[data-code="${code}"]`).each(function () {
-		const item = $(this).val();
-		allItems.push(item);
-		if ($(this).is(':checked')) {
-			approvedItems.push(item);
-		}
-	});
+	// If in edit mode (checkboxes are visible)
+	if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
+		$(`.item-checkbox[data-code="${code}"]`).each(function () {
+			const item = $(this).val();
+			allItems.push(item);
+			if ($(this).is(':checked')) {
+				approvedItems.push(item);
+			}
+		});
+	} 
+	// If already saved (no checkboxes visible)
+	else {
+		approvedItems = window.savedItems?.[code] || [];
+		allItems = window.originalContent?.[code]?.match(/<li>(.*?)<\/li>/g)?.map(li => li.replace(/<\/?li>/g, '')) || approvedItems;
+	}
 
-	// Check if there are disapproved items
+	// Get feedback (if visible), or from saved state
+	const feedbackEl = $(`#admin_feedback_${code}`);
+	let feedback = "";
+	if (feedbackEl.length > 0) {
+		feedback = feedbackEl.val()?.trim() || "";
+	} else {
+		feedback = window.savedFeedback?.[code] || "";
+	}
+
 	const hasDisapproved = approvedItems.length < allItems.length;
-
-	// Get admin feedback
-	const feedback = $(`#admin_feedback_${code}`).val()?.trim() || "";
 
 	if (hasDisapproved && feedback === "") {
 		toastr.warning("Please provide feedback for disapproved items.");
@@ -857,7 +869,7 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
 		? `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`
 		: `All items approved: ${approvedItems.join(", ")}`;
 
-	// Send AJAX
+	// AJAX submit
 	$.ajax({
 		type: "POST",
 		url: "../class/edit/edit",
@@ -933,17 +945,18 @@ $('.frm_cancelreservation').submit(function(e){
 	});
 });
 
-$(document).ready(function() {
+$(document).ready(function () {
     var originalContent = {};
-    var savedFeedback = {};
-    var savedItems = {};
+    window.savedItems = {};       // ✅ Make them global
+    window.savedFeedback = {};
 
-    // Edit Button
-    $(document).on('click', '.btn-edit', function() {
+    // EDIT Button
+    $(document).on('click', '.btn-edit', function () {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
-        originalContent[id] = listContainer.html(); // save initial content
+        // Save original HTML
+        originalContent[id] = listContainer.html();
 
         var items = listContainer.find('li');
         var textarea = `
@@ -958,7 +971,7 @@ $(document).ready(function() {
         `;
 
         var html = "<ul>";
-        items.each(function() {
+        items.each(function () {
             var text = $(this).text().trim();
             if (text) {
                 html += `<li><label><input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked> ${text}</label></li>`;
@@ -968,13 +981,13 @@ $(document).ready(function() {
 
         listContainer.html(html);
 
-        $('.btn-edit[data-id="'+id+'"]').hide();
-        $('.btn-accept[data-id="'+id+'"]').show();
-        $('.btn-cancel[data-id="'+id+'"]').show();
+        $('.btn-edit[data-id="' + id + '"]').hide();
+        $('.btn-accept[data-id="' + id + '"]').hide();
+        $('.btn-cancel[data-id="' + id + '"]').hide();
     });
 
-    // Back Button
-    $(document).on('click', '.btn-back', function() {
+    // BACK Button
+    $(document).on('click', '.btn-back', function () {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
@@ -982,28 +995,29 @@ $(document).ready(function() {
             listContainer.html(originalContent[id]);
         }
 
-        $('.btn-edit[data-id="'+id+'"]').show();
-        $('.btn-accept[data-id="'+id+'"]').show();
-        $('.btn-cancel[data-id="'+id+'"]').show();
+        $('.btn-edit[data-id="' + id + '"]').show();
+        $('.btn-accept[data-id="' + id + '"]').show();
+        $('.btn-cancel[data-id="' + id + '"]').show();
     });
 
-    // ✅ Save Button
-    $(document).on('click', '.btn-save', function() {
+    // ✅ SAVE Button
+    $(document).on('click', '.btn-save', function () {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
         var checkedItems = [];
-        listContainer.find('.item-checkbox:checked').each(function() {
+        listContainer.find('.item-checkbox:checked').each(function () {
             checkedItems.push($(this).val());
         });
 
         var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
 
-        savedItems[id] = checkedItems;
-        savedFeedback[id] = feedback;
+        window.savedItems[id] = checkedItems;
+        window.savedFeedback[id] = feedback;
 
+        // Update HTML with only checked items and feedback
         var html = "<ul>";
-        checkedItems.forEach(function(item) {
+        checkedItems.forEach(function (item) {
             html += `<li>${item}</li>`;
         });
         html += "</ul>";
@@ -1014,18 +1028,57 @@ $(document).ready(function() {
 
         listContainer.html(html);
 
-        $('.btn-edit[data-id="'+id+'"]').show();
-        $('.btn-accept[data-id="'+id+'"]').show();
-        $('.btn-cancel[data-id="'+id+'"]').show();
+        // Reset buttons
+        $('.btn-edit[data-id="' + id + '"]').show();
+        $('.btn-accept[data-id="' + id + '"]').show();
+        $('.btn-cancel[data-id="' + id + '"]').show();
     });
 
-    // ✅ Accept Button
+    // ✅ ACCEPT Button
     tbl_pendingres.on('click', 'button.btn-accept', function (e) {
         e.preventDefault();
 
         const code = $(this).data('id');
-	})
+
+        // ✅ Read from savedItems and savedFeedback only
+        const approvedItems = window.savedItems[code] || [];
+        const feedback = window.savedFeedback[code] || "";
+
+        if (approvedItems.length === 0) {
+            toastr.warning("Please approve at least one item before accepting.");
+            return;
+        }
+
+        const remarks = (feedback && approvedItems.length > 0)
+            ? `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`
+            : `All items approved: ${approvedItems.join(", ")}`;
+
+        $.ajax({
+            type: "POST",
+            url: "../class/edit/edit",
+            data: {
+                key: 'accept_reservation',
+                code: code,
+                approved_items: approvedItems,
+                admin_feedback: remarks
+            },
+            success: function (data) {
+                console.log(data);
+                if (data > 0) {
+                    toastr.success("Successfully accepted reservation.");
+                    tbl_pendingres.ajax.reload(null, false);
+                    tbl_reserved.ajax.reload(null, false);
+                } else {
+                    toastr.error("Failed to accept reservation.");
+                }
+            },
+            error: function () {
+                toastr.error("AJAX error occurred.");
+            }
+        });
+    });
 });
+
 
 
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
