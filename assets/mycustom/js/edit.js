@@ -824,42 +824,40 @@ table_user.on('click', 'a.edit-upass', function(e){
 
 
 
-tbl_pendingres.on('click', 'button.btn-accept', function(e){
+tbl_pendingres.on('click', 'button.btn-accept', function (e) {
 	e.preventDefault();
-	
-	var code = $(this).attr('data-id');
 
-	// Get all checkboxes (both checked and unchecked)
-	var allItems = [];
-	var approvedItems = [];  
+	const code = $(this).data('id');
 
-	$('.item-checkbox[data-code="' + code + '"]').each(function () {
-		let itemText = $(this).val();
-		allItems.push(itemText);
+	// Collect all items (checkboxes)
+	const approvedItems = [];
+	const allItems = [];
+
+	$(`.item-checkbox[data-code="${code}"]`).each(function () {
+		const item = $(this).val();
+		allItems.push(item);
 		if ($(this).is(':checked')) {
-			approvedItems.push(itemText);
+			approvedItems.push(item);
 		}
 	});
 
-	// Determine if any items were disapproved (unchecked)
-	let hasDisapproved = approvedItems.length < allItems.length;
+	// Check if there are disapproved items
+	const hasDisapproved = approvedItems.length < allItems.length;
 
 	// Get admin feedback
-	var feedback = $('#admin_feedback_' + code).val()?.trim() || "";
+	const feedback = $(`#admin_feedback_${code}`).val()?.trim() || "";
 
-	// Construct remarks
-	let remarks = "";
-	if (hasDisapproved) {
-		if (feedback === "") {
-			toastr.warning("Please provide feedback for disapproved items.");
-			return;
-		}
-		remarks = `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`;
-	} else {
-		remarks = `All items approved: ${approvedItems.join(", ")}`;
+	if (hasDisapproved && feedback === "") {
+		toastr.warning("Please provide feedback for disapproved items.");
+		return;
 	}
 
-	// Send AJAX request
+	// Compose remarks
+	const remarks = hasDisapproved
+		? `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`
+		: `All items approved: ${approvedItems.join(", ")}`;
+
+	// Send AJAX
 	$.ajax({
 		type: "POST",
 		url: "../class/edit/edit",
@@ -868,16 +866,19 @@ tbl_pendingres.on('click', 'button.btn-accept', function(e){
 			code: code,
 			approved_items: approvedItems,
 			admin_feedback: remarks
-		}
-	})
-	.done(function(data){
-		console.log(data);
-		if(data > 0){
-			toastr.success('Successfully accepted reservation');
-			tbl_pendingres.ajax.reload(null,false);
-			tbl_reserved.ajax.reload(null,false);
-		}else{
-			toastr.error('Failed to accept reservation');
+		},
+		success: function (data) {
+			console.log(data);
+			if (data > 0) {
+				toastr.success("Successfully accepted reservation.");
+				tbl_pendingres.ajax.reload(null, false);
+				tbl_reserved.ajax.reload(null, false);
+			} else {
+				toastr.error("Failed to accept reservation.");
+			}
+		},
+		error: function () {
+			toastr.error("AJAX error occurred.");
 		}
 	});
 });
@@ -933,15 +934,25 @@ $('.frm_cancelreservation').submit(function(e){
 });
 
 $(document).ready(function() {
+    // Store original content before editing
+    var originalContent = {};
+
     // Edit Button
     $(document).on('click', '.btn-edit', function() {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
+        
+        // Save original content
+        originalContent[id] = listContainer.html();
+
         var items = listContainer.find('li');
         var textarea = `
             <div class="form-group mt-2">
                 <label><strong>Admin Feedback (why not approved):</strong></label>
-                <textarea class="form-control admin-feedback" data-id="`+id+`" rows="3" placeholder="Enter reason here..."></textarea>
+                <textarea class="form-control admin-feedback" data-id="${id}" rows="3" placeholder="Enter reason here..."></textarea>
+            </div>
+            <div>
+                <button class='btn btn-warning btn-back' data-id="${id}">Back</button>
             </div>
         `;
 
@@ -957,11 +968,29 @@ $(document).ready(function() {
 
         listContainer.html(html);
 
+        // Toggle buttons
         $('.btn-edit[data-id="'+id+'"]').hide();
-        $('.btn-save[data-id="'+id+'"]').show();
+        $('.btn-accept[data-id="'+id+'"]').show();
+        $('.btn-cancel[data-id="'+id+'"]').show();
+    });
+
+    // Back Button
+    $(document).on('click', '.btn-back', function() {
+        var id = $(this).data('id');
+        var listContainer = $('.item-list[data-id="' + id + '"]');
+
+        // Restore original content
+        if (originalContent[id]) {
+            listContainer.html(originalContent[id]);
+        }
+
+        // Toggle buttons
+        $('.btn-edit[data-id="'+id+'"]').show();
+        $('.btn-accept[data-id="'+id+'"]').show();
         $('.btn-cancel[data-id="'+id+'"]').show();
     });
 });
+
 
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();

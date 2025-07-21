@@ -690,7 +690,8 @@
 					$itemHtml .= "
 						<li>
 							<label class='item-editable' style='display:none'>
-								<input type='checkbox' class='item-check' data-code='$reservation_code' checked value='$item'> $item
+								<input type='checkbox' class='item-checkbox' data-code='$reservation_code' checked value='$item'>
+
 							</label>
 							<span class='item-text'>$item</span>
 						</li>";
@@ -700,14 +701,19 @@
 
 			// Feedback textarea (hidden by default)
 			$feedbackBox = "
-				<textarea class='form-control feedback-box' data-id='$reservation_code' style='display:none' placeholder='Explain why some items are not approved'></textarea>
+				<textarea id='admin_feedback_$reservation_code' class='form-control feedback-box' data-id='$reservation_code' style='display:none' placeholder='Explain why some items are not approved'></textarea>
 			";
 
 			$buttons = "
 				<div class='btn-action-group' data-id='$reservation_code'>
 					<button class='btn btn-warning btn-edit' data-id='$reservation_code'>Edit</button>
+					
 					<button class='btn btn-primary btn-accept' data-id='$reservation_code'>Accept</button>
-					<button class='btn btn-danger btn-cancel-modal' data-id='$reservation_code'>Cancel</button>
+					<button class='btn btn-danger btn-cancel' data-id='".$value['reservation_code']."'>
+							Cancel
+							<i class='fa fa-remove'></i>
+							</button>
+					
 				</div>
 			";
 
