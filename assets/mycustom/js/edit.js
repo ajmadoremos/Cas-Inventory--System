@@ -934,41 +934,40 @@ $('.frm_cancelreservation').submit(function(e){
 });
 
 $(document).ready(function() {
-    // Store original content before editing
     var originalContent = {};
+    var savedFeedback = {};
+    var savedItems = {};
 
     // Edit Button
     $(document).on('click', '.btn-edit', function() {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
-        
-        // Save original content
-        originalContent[id] = listContainer.html();
+
+        originalContent[id] = listContainer.html(); // save initial content
 
         var items = listContainer.find('li');
         var textarea = `
             <div class="form-group mt-2">
                 <label><strong>Admin Feedback (why not approved):</strong></label>
-                <textarea class="form-control admin-feedback" data-id="${id}" rows="3" placeholder="Enter reason here..."></textarea>
+                <textarea class="form-control admin-feedback" id="admin_feedback_${id}" rows="3" placeholder="Enter reason here..."></textarea>
             </div>
             <div>
                 <button class='btn btn-warning btn-back' data-id="${id}">Back</button>
+                <button class='btn btn-warning btn-save' data-id="${id}">Save</button>
             </div>
         `;
 
-        // Replace items with checkboxes
         var html = "<ul>";
         items.each(function() {
             var text = $(this).text().trim();
             if (text) {
-                html += `<li><label><input type="checkbox" class="item-checkbox" data-id="${id}" value="${text}" checked> ${text}</label></li>`;
+                html += `<li><label><input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked> ${text}</label></li>`;
             }
         });
         html += "</ul>" + textarea;
 
         listContainer.html(html);
 
-        // Toggle buttons
         $('.btn-edit[data-id="'+id+'"]').hide();
         $('.btn-accept[data-id="'+id+'"]').show();
         $('.btn-cancel[data-id="'+id+'"]').show();
@@ -979,16 +978,53 @@ $(document).ready(function() {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
-        // Restore original content
         if (originalContent[id]) {
             listContainer.html(originalContent[id]);
         }
 
-        // Toggle buttons
         $('.btn-edit[data-id="'+id+'"]').show();
         $('.btn-accept[data-id="'+id+'"]').show();
         $('.btn-cancel[data-id="'+id+'"]').show();
     });
+
+    // ✅ Save Button
+    $(document).on('click', '.btn-save', function() {
+        var id = $(this).data('id');
+        var listContainer = $('.item-list[data-id="' + id + '"]');
+
+        var checkedItems = [];
+        listContainer.find('.item-checkbox:checked').each(function() {
+            checkedItems.push($(this).val());
+        });
+
+        var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
+
+        savedItems[id] = checkedItems;
+        savedFeedback[id] = feedback;
+
+        var html = "<ul>";
+        checkedItems.forEach(function(item) {
+            html += `<li>${item}</li>`;
+        });
+        html += "</ul>";
+
+        if (feedback !== "") {
+            html += `<div><strong>Admin Feedback:</strong><br><em>${feedback}</em></div>`;
+        }
+
+        listContainer.html(html);
+
+        $('.btn-edit[data-id="'+id+'"]').show();
+        $('.btn-accept[data-id="'+id+'"]').show();
+        $('.btn-cancel[data-id="'+id+'"]').show();
+    });
+
+    // ✅ Accept Button
+    tbl_pendingres.on('click', 'button.btn-accept', function (e) {
+        e.preventDefault();
+
+        const code = $(this).data('id');
+	})
 });
 
 
