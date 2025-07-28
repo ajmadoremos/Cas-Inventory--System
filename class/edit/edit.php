@@ -390,25 +390,21 @@
     $sessionid = $_SESSION['admin_id'];
     $sessiontype = $_SESSION['admin_type'];
 
-    // Get feedback and approved items from POST
     $feedback = $_POST['admin_feedback'] ?? '';
     $approvedItems = $_POST['approved_items'] ?? [];
 
-    // Combine approved items into string
+    // Combine approved items into one string
     $approvedList = is_array($approvedItems) ? implode(", ", $approvedItems) : '';
+    $finalRemarks = $feedback;
 
-    // Final remarks (optional: only show approved items)
-    $finalRemarks = (count($approvedItems) === 0) ? 'No items approved.' : $feedback;
-
-    // Update reservation status
-    $sql = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
-    $sql->execute([1, $code]);
+    // ✅ Update reservation status and save approved items
+    $sql = $conn->prepare('UPDATE reservation SET status = ?, approved_items = ? WHERE reservation_code = ?');
+    $sql->execute([1, $approvedList, $code]);
 
     if ($sql->rowCount() > 0) {
         $add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES (?, ?, ?)');
         $add->execute([$code, $finalRemarks, 1]);
 
-        // Optionally update another field or table with $approvedList if needed
         echo 1;
     } else {
         echo 0;
