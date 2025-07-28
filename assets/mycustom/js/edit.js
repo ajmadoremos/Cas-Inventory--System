@@ -824,76 +824,6 @@ table_user.on('click', 'a.edit-upass', function(e){
 
 
 
-tbl_pendingres.on('click', 'button.btn-accept', function (e) {
-	e.preventDefault();
-
-	const code = $(this).data('id');
-
-	let approvedItems = [];
-	let allItems = [];
-
-	// If in edit mode (checkboxes are visible)
-	if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
-		$(`.item-checkbox[data-code="${code}"]`).each(function () {
-			const item = $(this).val();
-			allItems.push(item);
-			if ($(this).is(':checked')) {
-				approvedItems.push(item);
-			}
-		});
-	} 
-	// If already saved (no checkboxes visible)
-	else {
-		approvedItems = window.savedItems?.[code] || [];
-		allItems = window.originalContent?.[code]?.match(/<li>(.*?)<\/li>/g)?.map(li => li.replace(/<\/?li>/g, '')) || approvedItems;
-	}
-
-	// Get feedback (if visible), or from saved state
-	const feedbackEl = $(`#admin_feedback_${code}`);
-	let feedback = "";
-	if (feedbackEl.length > 0) {
-		feedback = feedbackEl.val()?.trim() || "";
-	} else {
-		feedback = window.savedFeedback?.[code] || "";
-	}
-
-	const hasDisapproved = approvedItems.length < allItems.length;
-
-	if (hasDisapproved && feedback === "") {
-		toastr.warning("Please provide feedback for disapproved items.");
-		return;
-	}
-
-	// Compose remarks
-	const remarks = hasDisapproved
-		? `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`
-		: `All items approved: ${approvedItems.join(", ")}`;
-
-	// AJAX submit
-	$.ajax({
-		type: "POST",
-		url: "../class/edit/edit",
-		data: {
-			key: 'accept_reservation',
-			code: code,
-			approved_items: approvedItems,
-			admin_feedback: remarks
-		},
-		success: function (data) {
-			console.log(data);
-			if (data > 0) {
-				toastr.success("Successfully accepted reservation.");
-				tbl_pendingres.ajax.reload(null, false);
-				tbl_reserved.ajax.reload(null, false);
-			} else {
-				toastr.error("Failed to accept reservation.");
-			}
-		},
-		error: function () {
-			toastr.error("AJAX error occurred.");
-		}
-	});
-});
 
 
 
@@ -947,11 +877,12 @@ $('.frm_cancelreservation').submit(function(e){
 
 $(document).ready(function () {
     var originalContent = {};
-    window.savedItems = {};       // ✅ Make them global
+    window.savedItems = {};
     window.savedFeedback = {};
+    window.allItems = {};  // ✅ Track all items for accurate feedback check
 
-    // EDIT Button
-    $(document).on('click', '.btn-edit', function () {
+    // ✅ EDIT Button
+    tbl_pendingres.on('click', '.btn-edit', function () {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
@@ -959,7 +890,21 @@ $(document).ready(function () {
         originalContent[id] = listContainer.html();
 
         var items = listContainer.find('li');
-        var textarea = `
+        var allItemsList = [];
+        var html = "<ul>";
+
+        items.each(function () {
+            var text = $(this).text().trim();
+            if (text) {
+                allItemsList.push(text);
+                html += `<li><label><input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked> ${text}</label></li>`;
+            }
+        });
+
+        window.allItems[id] = allItemsList;
+
+        html += "</ul>";
+        html += `
             <div class="form-group mt-2">
                 <label><strong>Admin Feedback (why not approved):</strong></label>
                 <textarea class="form-control admin-feedback" id="admin_feedback_${id}" rows="3" placeholder="Enter reason here..."></textarea>
@@ -970,15 +915,6 @@ $(document).ready(function () {
             </div>
         `;
 
-        var html = "<ul>";
-        items.each(function () {
-            var text = $(this).text().trim();
-            if (text) {
-                html += `<li><label><input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked> ${text}</label></li>`;
-            }
-        });
-        html += "</ul>" + textarea;
-
         listContainer.html(html);
 
         $('.btn-edit[data-id="' + id + '"]').hide();
@@ -986,8 +922,8 @@ $(document).ready(function () {
         $('.btn-cancel[data-id="' + id + '"]').hide();
     });
 
-    // BACK Button
-    $(document).on('click', '.btn-back', function () {
+    // ✅ BACK Button
+    tbl_pendingres.on('click', '.btn-back', function () {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
@@ -1001,7 +937,7 @@ $(document).ready(function () {
     });
 
     // ✅ SAVE Button
-    $(document).on('click', '.btn-save', function () {
+    tbl_pendingres.on('click', '.btn-save', function () {
         var id = $(this).data('id');
         var listContainer = $('.item-list[data-id="' + id + '"]');
 
@@ -1027,6 +963,7 @@ $(document).ready(function () {
         }
 
         listContainer.html(html);
+        originalContent[id] = listContainer.html(); // ✅ Update original content with the latest
 
         // Reset buttons
         $('.btn-edit[data-id="' + id + '"]').show();
@@ -1034,53 +971,68 @@ $(document).ready(function () {
         $('.btn-cancel[data-id="' + id + '"]').show();
     });
 
-    // ✅ ACCEPT Button
-    tbl_pendingres.on('click', 'button.btn-accept', function (e) {
-        e.preventDefault();
+    
+// ✅ ACCEPT Button
+tbl_pendingres.on('click', 'button.btn-accept', function (e) {
+    e.preventDefault();
 
-        const code = $(this).data('id');
+    const code = $(this).data('id');
+    let approvedItems = [];
+    let allItems = [];
 
-        // ✅ Read from savedItems and savedFeedback only
-        const approvedItems = window.savedItems[code] || [];
-        const feedback = window.savedFeedback[code] || "";
-
-        if (approvedItems.length === 0) {
-            toastr.warning("Please approve at least one item before accepting.");
-            return;
-        }
-
-        const remarks = (feedback && approvedItems.length > 0)
-            ? `Approved Items:\n${approvedItems.join(", ")}\nFeedback: ${feedback}`
-            : `All items approved: ${approvedItems.join(", ")}`;
-
-        $.ajax({
-            type: "POST",
-            url: "../class/edit/edit",
-            data: {
-                key: 'accept_reservation',
-                code: code,
-                approved_items: approvedItems,
-                admin_feedback: remarks
-            },
-            success: function (data) {
-                console.log(data);
-                if (data > 0) {
-                    toastr.success("Successfully accepted reservation.");
-                    tbl_pendingres.ajax.reload(null, false);
-                    tbl_reserved.ajax.reload(null, false);
-                } else {
-                    toastr.error("Failed to accept reservation.");
-                }
-            },
-            error: function () {
-                toastr.error("AJAX error occurred.");
+    if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
+        $(`.item-checkbox[data-code="${code}"]`).each(function () {
+            const item = $(this).val();
+            allItems.push(item);
+            if ($(this).is(':checked')) {
+                approvedItems.push(item);
             }
         });
+    } else {
+        approvedItems = window.savedItems?.[code] || [];
+        allItems = window.allItems?.[code] || approvedItems;
+    }
+
+    // ✅ Use saved feedback even if textarea is gone
+    let feedback = window.savedFeedback?.[code]?.trim() || "";
+
+    const hasDisapproved = approvedItems.length < allItems.length;
+
+    if (hasDisapproved && feedback === "") {
+        toastr.warning("Please provide feedback for disapproved items.");
+        return;
+    }
+
+    const remarks = (approvedItems.length === allItems.length)
+    ? `All items approved`
+    : `Approved items: ${approvedItems.join("<br>")}<br>Not approved: ${allItems.filter(item => !approvedItems.includes(item)).join("<br>")}<br>Feedback for disapproved items: ${feedback}`;
+
+    $.ajax({
+        type: "POST",
+        url: "../class/edit/edit",
+        data: {
+            key: 'accept_reservation',
+            code: code,
+            approved_items: approvedItems,
+            admin_feedback: remarks
+        },
+        success: function (data) {
+            console.log(data);
+            if (data > 0) {
+                toastr.success("Successfully accepted reservation.");
+                tbl_pendingres.ajax.reload(null, false);
+                tbl_reserved.ajax.reload(null, false);
+            } else {
+                toastr.error("Failed to accept reservation.");
+            }
+        },
+        error: function () {
+            toastr.error("AJAX error occurred.");
+        }
     });
 });
 
-
-
+});
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();
 	var a = $(this).attr('data-id');

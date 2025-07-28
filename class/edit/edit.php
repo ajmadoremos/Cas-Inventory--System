@@ -381,26 +381,40 @@
 		}
 
 		public function accept_reservation($code)
-		{
-			global $conn;
+{
+    global $conn;
+    session_start();
 
-			session_start();
-			$h_desc = 'accept client reservation';
-			$h_tbl = 'reservation';
-			$sessionid = $_SESSION['admin_id'];
-			$sessiontype = $_SESSION['admin_type'];
+    $h_desc = 'accept client reservation';
+    $h_tbl = 'reservation';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
 
-			$sql = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
-			$sql->execute(array(1,$code));
-			$row = $sql->rowCount();
-			if($row > 0){
-				$add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES(?,?,?)');
-				$add->execute(array($code,'Accepted Reservation',1));
-				$addrow = $add->rowCount();
+    // Get feedback and approved items from POST
+    $feedback = $_POST['admin_feedback'] ?? '';
+    $approvedItems = $_POST['approved_items'] ?? [];
 
-				echo $addrow;
-			}
-		}
+    // Combine approved items into string
+    $approvedList = is_array($approvedItems) ? implode(", ", $approvedItems) : '';
+
+    // Final remarks (optional: only show approved items)
+    $finalRemarks = (count($approvedItems) === 0) ? 'No items approved.' : $feedback;
+
+    // Update reservation status
+    $sql = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
+    $sql->execute([1, $code]);
+
+    if ($sql->rowCount() > 0) {
+        $add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES (?, ?, ?)');
+        $add->execute([$code, $finalRemarks, 1]);
+
+        // Optionally update another field or table with $approvedList if needed
+        echo 1;
+    } else {
+        echo 0;
+    }
+}
+
 
 		public function cancel_reservation($remarks_cancel,$codereserve)
 		{
