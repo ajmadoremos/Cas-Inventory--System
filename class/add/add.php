@@ -7,7 +7,7 @@
 	// 0 == failed
 
 	class add {
-		
+
 		public function add_room($name)
 {
 	global $conn;
@@ -36,7 +36,8 @@
 	}
 }
 
-		public function sign_student($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_major,$s_year,$s_section,$s_password,$type)
+		public function sign_student($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section, $type)
+
 		{
 			global $conn;
 
@@ -44,13 +45,13 @@
 			$sql->execute(array($sid_number,$s_fname,$s_lname,$type));
 			$sql_count = $sql->rowCount();
 				if($sql_count <= 0 ){
-					
-					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type, m_password) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)');
-					$insert->execute(array($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year.' - '.$s_section,$type,$s_password));
+
+					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES(?, ?, ?, ?, ?, ?, ?, ?)');
+					$insert->execute(array($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year.' - '.$s_section,$type));
 					$insert_count = $insert->rowCount();
-						
+
 						if($insert_count > 0){
-							echo "1";
+							echo "Student";
 						}else{
 							echo "0";
 						}
@@ -60,7 +61,7 @@
 				}
 		}
 
-		public function sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$f_password,$type)
+		public function sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type)
 		{
 			global $conn;
 
@@ -68,13 +69,13 @@
 			$sql->execute(array($f_id,$f_fname,$f_lname,$type));
 			$sql_count = $sql->rowCount();
 				if($sql_count <= 0 ){
-					
-					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_type, m_password) VALUES(?, ?, ?, ?, ?, ?, ?, ?)');
-					$insert->execute(array($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type,$f_password));
+
+					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_type) VALUES(?, ?, ?, ?, ?, ?, ?)');
+					$insert->execute(array($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type));
 					$insert_count = $insert->rowCount();
-						
+
 						if($insert_count > 0){
-							echo "1";
+							echo "Faculty";
 						}else{
 							echo "0";
 						}
@@ -120,15 +121,15 @@
 			$tmpData = $_FILES['e_photo']['tmp_name'];
 			$fileName = time();
 			$fileStatus = move_uploaded_file($tmpData,'../../uploads/'.$fileName.".".$extension);
-			
+
 			$file = "";
-			
+
 			if($fileStatus):
 				$file = $fileName.".".$extension;
 				$sql = $conn->prepare('UPDATE item SET i_photo = ? WHERE id = ?');
 				$sql->execute(array($file,$itemID));
 			endif;
-				
+
 			if($row > 0){
 				$item = $conn->prepare('INSERT INTO item_stock (item_id, room_id, items_stock, item_status)
 										VALUES(?,?,?,?)');
@@ -177,7 +178,7 @@
 			global $conn;
 
 			session_start();
-			
+
 			$h_tbl = 'equipment';
 			$sessionid = $_SESSION['admin_id'];
 			$sessiontype = $_SESSION['admin_type'];
@@ -185,7 +186,7 @@
 			$sql = $conn->prepare('SELECT * FROM item_stock 
 									LEFT JOIN item ON item.id = item_stock.item_id
 									WHERE item_stock.id = ?');
-			
+
 			$sql->execute(array($id));
 			$count = $sql->rowCount();
 			$fetch = $sql->fetch();
@@ -210,7 +211,7 @@
 						$history = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
 						$history->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));
 						$historycount = $history->rowCount();
-						
+
 						echo $rawstock.'|'.$stockleft;
 					}
 				}
@@ -222,7 +223,7 @@
 
 		public function add_borrower($name,$item,$id,$reserve_room,$timeLimit)
 		{
-			
+
 			global $conn;
 
 			session_start();
@@ -296,7 +297,7 @@
 		{
 			global $conn;
 			$code = date('mdYhis').''.$client_id;
-			
+
 			// $sql = $conn->prepare('SELECT * FROM reservation WHERE reservation_code = ?');
 			// $sql->execute(array($code));
 			// $row = $sql->rowCount();
@@ -316,11 +317,12 @@
 				}
 			// }
 			// foreach ($items as $key => $value) {
-				
+
 			// }
 		}
 
-		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_major, $s_year, $s_section)
+		
+		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section)
 {
     global $conn;
 
@@ -339,8 +341,8 @@
 
     if ($sql_count <= 0) {
         // Insert new student record
-        $insert = $conn->prepare('INSERT INTO member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_major, m_year_section, m_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $inserted = $insert->execute([$sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_major, $s_year . ' - ' . $s_section, $type]);
+        $insert = $conn->prepare('INSERT INTO member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $inserted = $insert->execute([$sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year . ' - ' . $s_section, $type]);
 
         if ($inserted) {
             // Insert into history logs
@@ -355,7 +357,7 @@
         echo "2"; // duplicate school id
     }
 }
- 
+
 
 		public function add_newfaculty($f_id, $f_fname, $f_lname, $f_gender, $f_contact, $f_department, $type)
 {
@@ -383,7 +385,7 @@
             // Insert into history_logs table
             $log = $conn->prepare('INSERT INTO history_logs (description, table_name, user_id, user_type) VALUES (?, ?, ?, ?)');
             $log->execute(array($h_desc, $h_tbl, $sessionid, $sessiontype));
-            
+
             echo "1"; // success
         } else {
             echo "0"; // failed
@@ -407,32 +409,36 @@
 		$add_function->add_room($name);
 		break;
 
-		case 'sign_student';
-		$sid_number = trim($_POST['sid_number']);
- 		$s_fname = strtolower(trim($_POST['s_fname']));
- 		$s_lname = strtolower(trim($_POST['s_lname']));
- 		$s_gender = trim($_POST['s_gender']);
- 		$s_contact = trim($_POST['s_contact']);
- 		$s_department = trim($_POST['s_department']);
- 		$s_major = trim($_POST['s_major']);
- 		$s_year = trim($_POST['s_year']);
- 		$s_section = trim($_POST['s_section']);
- 		$s_password = trim(md5($_POST['s_password']));
- 		$type = 1;
- 		$add_function->sign_student($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_major,$s_year,$s_section,$s_password,$type);
-		break;
+		case 'sign_student':
+    $sid_number = trim($_POST['sid_number']);
+    $s_fname = strtolower(trim($_POST['s_fname']));
+    $s_lname = strtolower(trim($_POST['s_lname']));
+    $s_gender = trim($_POST['s_gender']);
+    $s_contact = trim($_POST['s_contact']);
+    $s_department = trim($_POST['s_department']);
+    $s_year = trim($_POST['s_year']);
+    $s_section = trim($_POST['s_section']);
+    $type = trim($_POST['type']); // ✅ use actual string "Student"
 
-		case 'sign_faculty';
-		$f_id = trim($_POST['f_id']);
-		$f_fname = strtolower(trim($_POST['f_fname']));
-		$f_lname = strtolower(trim($_POST['f_lname']));
-		$f_gender = trim($_POST['f_gender']);
-		$f_contact = trim($_POST['f_contact']);
-		$f_department = trim($_POST['f_department']);
-		$f_password = trim(md5($_POST['f_password']));
- 		$type = 2;
-		$add_function->sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$f_password,$type);
-		break;
+    $add_function->sign_student(
+        $sid_number, $s_fname, $s_lname, $s_gender, $s_contact,
+        $s_department, $s_year, $s_section, $type
+    );
+    break;
+
+
+		case 'sign_faculty':
+    $f_id = trim($_POST['f_id']);
+    $f_fname = strtolower(trim($_POST['f_fname']));
+    $f_lname = strtolower(trim($_POST['f_lname']));
+    $f_gender = trim($_POST['f_gender']);
+    $f_contact = trim($_POST['f_contact']);
+    $f_department = trim($_POST['f_department']);
+    $type = trim($_POST['type']); // ✅ use actual string "Faculty"
+
+    $add_function->sign_faculty($f_id, $f_fname, $f_lname, $f_gender, $f_contact, $f_department, $type);
+    break;
+
 
 		case 'add_equipment';
 		$e_number = trim($_POST['e_number']);
@@ -502,10 +508,9 @@
  		$s_gender = trim($_POST['s_gender']);
  		$s_contact = trim($_POST['s_contact']);
  		$s_department = trim($_POST['s_department']);
- 		$s_major = trim($_POST['s_major']);
  		$s_year = trim($_POST['s_year']);
  		$s_section = ucwords(trim($_POST['s_section']));
- 		$add_function->add_newstudent($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_major,$s_year,$s_section);
+ 		$add_function->add_newstudent($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year,$s_section);
 		break;
 
 		case 'add_newfaculty';
@@ -518,7 +523,7 @@
  		$type = 'Faculty';
 		$add_function->add_newfaculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type);
 		break;
-		
+
 
 
 
@@ -527,5 +532,3 @@
 
 
 	?>
-
-

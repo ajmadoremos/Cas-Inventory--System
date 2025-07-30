@@ -1,7 +1,7 @@
 // edit room
 table_room.on('click', 'a.edit-room', function(e){
     e.preventDefault();
-    
+
     $('.editroom-side').toggle(effect, options, duration);
     var data = table_room.row( $(this).parents('tr') ).data();
     var rm_name = data[0];
@@ -18,11 +18,11 @@ table_room.on('click', 'a.edit-room', function(e){
         var a_name = $('input[name="edit_rm_name"]').val();
 
         if(a_name.toLowerCase() === rm_name.toLowerCase()){
-	       	
+
 	       	toastr.warning('No changes made');
 
         }else{
-	       
+
         	var token = $(this).serialize()+'&key=edit_room';
 	       	$.ajax({
 	       		type: "POST",
@@ -53,9 +53,9 @@ table_room.on('click', 'a.edit-room', function(e){
 
 table_equipment.on('click', 'a.equip_details', function(e){
 	e.preventDefault();
-	
+
 	var data = table_equipment.row( $(this).parents('tr') ).data();
-	
+
     $('.equipment-view').toggle(effect, options, duration);
 
     $('.equipment-form').html('<div class="container-fluid">\
@@ -217,7 +217,7 @@ $('.item-edit').click(function(){
 	var e_photo= $('.e_photo').text();
 	var e_mr= $('.e_mr').text();
 	var e_price= $('.e_price').text();
-	
+
 	// console.log
 	var id = getequipmentid();
 
@@ -419,7 +419,7 @@ $('.equipment-forminfo').html(append);
 			setTimeout(function(){
 				window.location.reload();
 			},3000);
-			
+
 		});
 
 
@@ -819,33 +819,10 @@ table_user.on('click', 'a.edit-upass', function(e){
 
 	});
 
-	
+
 });
 
 
-
-tbl_pendingres.on('click', 'button.btn-accept', function(e){
-	e.preventDefault();
-	var a = $(this).attr('data-id');
-	$.ajax({
-		type: "POST",
-		url: "../class/edit/edit",
-		data: {
-			key: 'accept_reservation',
-			code: a
-		}
-	})
-	.done(function(data){
-		console.log(data);
-		if(data > 0){
-			toastr.success('Successully accept reservation');
-			tbl_pendingres.ajax.reload(null,false);
-			tbl_reserved.ajax.reload(null,false);
-		}else{
-			toastr.error('Failed to accept reservation');
-		}
-	});
-});
 
 tbl_pendingres.on('click', 'button.btn-cancel', function(e){
 	e.preventDefault();
@@ -895,11 +872,170 @@ $('.frm_cancelreservation').submit(function(e){
 	});
 });
 
+$(document).ready(function () {
+    var originalContent = {};
+    
+    window.savedItems = {};
+    window.savedFeedback = {};
+    window.allItems = {};  // ✅ Track all items for accurate feedback check
 
+    // ✅ EDIT Button
+    tbl_pendingres.on('click', '.btn-edit', function () {
+        var id = $(this).data('id');
+        var listContainer = $('.item-list[data-id="' + id + '"]');
+
+        // Save original HTML
+        originalContent[id] = listContainer.html();
+
+        var items = listContainer.find('li');
+        
+        var allItemsList = [];
+        var html = "<ul>";
+
+        items.each(function () {
+            var text = $(this).text().trim();
+            if (text) {
+                allItemsList.push(text);
+                html += `<li><label><input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked> ${text}</label></li>`;
+            }
+        });
+
+        window.allItems[id] = allItemsList;
+
+        html += "</ul>";
+        html += `
+            <div class="form-group mt-2">
+                <label><strong>Admin Feedback (why not approved):</strong></label>
+                <textarea class="form-control admin-feedback" id="admin_feedback_${id}" rows="3" placeholder="Enter reason here..."></textarea>
+            </div>
+            <div>
+                <button class='btn btn-warning btn-back' data-id="${id}">Back</button>
+                <button class='btn btn-warning btn-save' data-id="${id}">Save</button>
+            </div>
+        `;
+
+        listContainer.html(html);
+
+        $('.btn-edit[data-id="' + id + '"]').hide();
+        $('.btn-accept[data-id="' + id + '"]').hide();
+        $('.btn-cancel[data-id="' + id + '"]').hide();
+    });
+
+    // ✅ BACK Button
+    tbl_pendingres.on('click', '.btn-back', function () {
+        var id = $(this).data('id');
+        var listContainer = $('.item-list[data-id="' + id + '"]');
+
+        if (originalContent[id]) {
+            listContainer.html(originalContent[id]);
+        }
+
+        $('.btn-edit[data-id="' + id + '"]').show();
+        $('.btn-accept[data-id="' + id + '"]').show();
+        $('.btn-cancel[data-id="' + id + '"]').show();
+    });
+
+    // ✅ SAVE Button
+    tbl_pendingres.on('click', '.btn-save', function () {
+        var id = $(this).data('id');
+        var listContainer = $('.item-list[data-id="' + id + '"]');
+
+        var checkedItems = [];
+        listContainer.find('.item-checkbox:checked').each(function () {
+            checkedItems.push($(this).val());
+        });
+
+        var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
+
+        window.savedItems[id] = checkedItems;
+        window.savedFeedback[id] = feedback;
+
+        // Update HTML with only checked items and feedback
+        var html = "<ul>";
+        checkedItems.forEach(function (item) {
+            html += `<li>${item}</li>`;
+        });
+        html += "</ul>";
+
+        if (feedback !== "") {
+            html += `<div><strong>Admin Feedback:</strong><br><em>${feedback}</em></div>`;
+        }
+
+        listContainer.html(html);
+        originalContent[id] = listContainer.html(); // ✅ Update original content with the latest
+
+        // Reset buttons
+        $('.btn-edit[data-id="' + id + '"]').show();
+        $('.btn-accept[data-id="' + id + '"]').show();
+        $('.btn-cancel[data-id="' + id + '"]').show();
+    });
+    
+// ✅ ACCEPT Button
+tbl_pendingres.on('click', 'button.btn-accept', function (e) {
+    e.preventDefault();
+    const code = $(this).data('id');
+    let approvedItems = [];
+    let allItems = [];
+
+    if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
+        $(`.item-checkbox[data-code="${code}"]`).each(function () {
+            const item = $(this).val();
+            allItems.push(item);
+            if ($(this).is(':checked')) {
+                approvedItems.push(item);
+            }
+        });
+    } else {
+        approvedItems = window.savedItems?.[code] || [];
+        allItems = window.allItems?.[code] || approvedItems;
+    }
+
+    // ✅ Use saved feedback even if textarea is gone
+    let feedback = window.savedFeedback?.[code]?.trim() || "";
+
+    const hasDisapproved = approvedItems.length < allItems.length;
+
+    if (hasDisapproved && feedback === "") {
+        toastr.warning("Please provide feedback for disapproved items.");
+        return;
+    }
+
+    const remarks = (approvedItems.length === allItems.length)
+    ? `All items approved`
+    : `Approved items: ${approvedItems.join("<br>")}<br>Not approved: ${allItems.filter(item => !approvedItems.includes(item)).join("<br>")}<br>Feedback for disapproved items: ${feedback}`;
+
+    $.ajax({
+        type: "POST",
+        url: "../class/edit/edit",
+        data: {
+            key: 'accept_reservation',
+            code: code,
+            approved_items: approvedItems,
+            admin_feedback: remarks
+        },
+        success: function (data) {
+            console.log(data);
+            if (data > 0) {
+                toastr.success("Successfully accepted reservation.");
+                tbl_pendingres.ajax.reload(null, false);
+                tbl_reserved.ajax.reload(null, false);
+            } else {
+                toastr.error("Failed to accept reservation.");
+            }
+        },
+        error: function () {
+            toastr.error("AJAX error occurred.");
+        }
+    });
+});
+
+
+
+});
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();
 	var a = $(this).attr('data-id');
-	
+
 
 	$.ajax({
 		type: "POST",
@@ -930,5 +1066,4 @@ tbl_reserved.on('click', 'button.borrowreserve', function(e){
 			toastr.error('Failed to borrow reservation');
 		}
 	});
-
 });

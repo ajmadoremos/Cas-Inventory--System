@@ -8,7 +8,7 @@
 $('.frm_addroom').submit(function(e){
 	e.preventDefault();
 	var a = $('input[name="room_name"]');
-	
+
 	$.ajax({
 		type: "POST",
 		url: "../class/add/add",
@@ -40,7 +40,7 @@ $('.frm_addroom').submit(function(e){
 });
 $(document).on('click', '.delete-room', function(e){
     e.preventDefault();
-    
+
     var room_id = $(this).data('id');
 
     if (confirm('Are you sure you want to delete this room?')) {
@@ -71,7 +71,7 @@ $(document).on('click', '.delete-room', function(e){
 
 $(document).on('click', '.delete-member', function(e){
     e.preventDefault();
-    
+
     var member_id = $(this).data('id');
 
     if (confirm('Are you sure you want to delete this member?')) {
@@ -102,7 +102,7 @@ $(document).on('click', '.delete-member', function(e){
 
 $(document).on('click', '.delete-user', function(e){
     e.preventDefault();
-    
+
     var user_id = $(this).data('id');
 
     if (confirm('Are you sure you want to delete this member?')) {
@@ -132,32 +132,54 @@ $(document).on('click', '.delete-user', function(e){
 });
 
 
-// Auto-format school ID as user types
-$('#sid_number').on('input', function () {
-    let value = $(this).val().replace(/\D/g, ''); // digits only
-    let formatted = '';
+function toggleForms() {
+	const loginForm = document.getElementById('login-form');
+	const signupForm = document.getElementById('signup-form');
 
-    if (value.length > 0) formatted += value.substring(0, 2);
-    if (value.length > 2) formatted += '-' + value.substring(2, 3);
-    if (value.length > 3) formatted += '-' + value.substring(3, 4);
-    if (value.length > 4) formatted += '-' + value.substring(4, 8);
+	const isLoginVisible = loginForm.style.display !== 'none';
+	loginForm.style.display = isLoginVisible ? 'none' : 'block';
+	signupForm.style.display = isLoginVisible ? 'block' : 'none';
+}
 
-    $(this).val(formatted);
+ $(document).ready(function () {
+  $('.student-btn').click(function () {
+    $('#student-form').show();
+    $('#faculty-form').hide();
+    $('input[name="type"]').val('Student'); // ✅ sets hidden type field
+  });
+
+  $('.faculty-btn').click(function () {
+    $('#student-form').hide();
+    $('#faculty-form').show();
+    $('input[name="type"]').val('Faculty'); // ✅ sets hidden type field
+  });
 });
 
-// Form submit handler with validation
-$('.frm_student_sign').submit(function(e) {
+
+
+
+$(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs', function(e) {
     e.preventDefault();
 
     let sid = $('input[name="sid_number"]').val().trim();
-    let sidFormat = /^\d{2}-\d{1}-\d{1}-\d{4}$/;
+    let contact = $('input[name="s_contact"]').val().trim();
 
+    // Validate School ID Format: 21-1-1-0221
+    let sidFormat = /^\d{2}-\d{1}-\d{1}-\d{4}$/;
     if (!sidFormat.test(sid)) {
         toastr.warning('School ID must be in the format: 21-1-1-0221');
         return;
     }
 
+    // Validate Contact Number Format: 09XXXXXXXXX
+    let contactFormat = /^09\d{9}$/;
+    if (!contactFormat.test(contact)) {
+        toastr.warning('Contact number must be in the format: 09090909099');
+        return;
+    }
+
     let datas = $(this).serialize() + '&key=sign_student';
+    let form = this; // cache reference to the form for reset
 
     $.ajax({
         type: "POST",
@@ -169,53 +191,79 @@ $('.frm_student_sign').submit(function(e) {
     })
     .done(function(data) {
         $('.btn_student').removeAttr('disabled');
-        if (data == 1) {
+        data = data.trim();
+
+        if (data == "Student") {
             toastr.success('Successfully signup', 'Redirecting page');
+            form.reset(); // ✅ Clear the form
             setTimeout(function() {
-                window.location = 'login';
+                window.location = 'login'; // redirect
             }, 3000);
-        } else if (data == 2) {
-            toastr.warning('Student already exist');
-        } else if (data == 0) {
+        } else if (data == "2") {
+            toastr.warning('Student already exists');
+        } else if (data == "0") {
             toastr.error('Failed to signup');
         }
     })
     .fail(function(data) {
+        $('.btn_student').removeAttr('disabled');
         console.log(data);
     });
 });
 
 
-$('.frm_faculty_sign').submit(function(e){
-	e.preventDefault();
-	var datas = $(this).serialize()+'&key=sign_faculty';
 
-	$.ajax({
-		type: "POST",
-		data: datas,
-		url : '../class/add/add'
-	})
-	.done(function(data){
-		console.log(data);
-		$('.btn_faculty').removeAttr('disabled');
-		if(data == 1){
-			
-			toastr.success('Successfully signup', 'Redirecting page');
-			setTimeout(function(){
-				window.location = 'login';
-			},3000);
+$(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign', function(e) {
+    e.preventDefault();
 
-		}else if(data == 2){
-			toastr.warning('Faculty already exist');
-		}else if(data == 0){
-			toastr.error('Failed to signup');
-		}
-	})
-	.fail(function(data){
-		console.log(data);
-	});
+    let contact = $('input[name="f_contact"]').val().trim();
 
+    // ✅ Validate Contact Number Format: 09XXXXXXXXX
+    let contactFormat = /^09\d{9}$/;
+    if (!contactFormat.test(contact)) {
+        toastr.warning('Contact number must be in the format: 09090909099');
+        return;
+    }
+
+    let datas = $(this).serialize() + '&key=sign_faculty';
+    let form = this; // ✅ Reference to the form for resetting
+
+    $.ajax({
+        type: "POST",
+        url: '../class/add/add',
+        data: datas,
+        beforeSend: function() {
+            $('.btn_faculty').attr('disabled', true);
+        }
+    })
+    .done(function(data) {
+        $('.btn_faculty').removeAttr('disabled');
+        data = data.trim();
+
+        console.log('✅ Server response:', data);
+
+        if (data == "Faculty") {
+            toastr.success('Successfully signup', 'Redirecting page');
+            form.reset(); // ✅ Clear the form fields
+            setTimeout(function() {
+                window.location = 'login'; // redirect to login.php
+            }, 3000);
+        } else if (data == "2") {
+            toastr.warning('Faculty already exists');
+        } else if (data == "0") {
+            toastr.error('Failed to signup');
+        } else {
+            toastr.error('Unexpected server response: ' + data);
+        }
+    })
+    .fail(function(jqXHR, textStatus, errorThrown) {
+        $('.btn_faculty').removeAttr('disabled');
+        toastr.error('AJAX failed: ' + textStatus);
+        console.error('❌ AJAX error:', textStatus, errorThrown);
+    });
 });
+
+
 
 
 $('.frm_addequipment').submit(function(e){
@@ -339,7 +387,7 @@ $('.frm_borrow').submit(function(e){
 		dataType: 'json'
 	})
 	.done(function(data){
-		
+
 		if(data.response == 1)
 		{
 			toastr.success(data.message);
@@ -429,7 +477,7 @@ $('.add_student').click(function () {
       <hr>
       <div class="form-group">
         <label>School ID Number</label>
-        <input type="text" name="sid_number" class="form-control" required autocomplete="off" placeholder="e.g. 21-1-1-0221" maxlength="13" />
+        <input type="text" name="sid_number" class="form-control" required autocomplete="off" placeholder="e.g. 21-1-1-0221" maxlength="11" />
       </div>
       <div class="form-group">
         <label>First Name</label>
@@ -464,10 +512,7 @@ $('.add_student').click(function () {
           <option>BSIT</option>
         </select>
       </div>
-      <div class="form-group hide">
-        <label>Major</label>
-        <input type="text" name="s_major" class="form-control" autocomplete="off" />
-      </div>
+      
       <div class="form-group">
         <div class="row">
           <div class="col-md-6">
@@ -504,8 +549,8 @@ $('.add_student').click(function () {
   $(document).on('input', 'input[name="sid_number"]', function () {
     let val = $(this).val().replace(/[^0-9\-]/g, '');
     val = val.replace(/-+/g, '-');
-    if (val.length > 13) {
-      val = val.slice(0, 13);
+    if (val.length > 11) {
+      val = val.slice(0, 11);
     }
     $(this).val(val);
   });
@@ -650,9 +695,3 @@ $('.add_faculty').click(function () {
 		});
 	});
 });
-
-
-
-
-
-

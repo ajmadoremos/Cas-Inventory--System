@@ -4,13 +4,13 @@
 	// 1 == success
 	// 2 == exist
 	// 0 == failed
-	
+
 	/**
 	* 
 	*/
 	class edit
 	{
-		
+
 		public function edit_room($edit_rm_name,$edit_rm_id)
 		{
 			global $conn;
@@ -124,7 +124,7 @@
 									$updateitem = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE item_id = ? AND item_status = ?');
 									$updateitem->execute(array($item_emove,$itemID,$itemStatus));
 									$updateitemrow = $updateitem->rowCount();
-									
+
 									echo ($updateitemrow == 1) ? 'Succesfully changed' : 'Failed to change status' ;
 								}
 							}
@@ -141,13 +141,13 @@
 									$updateitem = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE item_id = ? AND item_status = ?');
 									$updateitem->execute(array($item_emove,$itemID,$itemStatus));
 									$updateitemrow = $updateitem->rowCount();
-									
+
 									echo ($updateitemrow == 1) ? 'Succesfully changed' : 'Failed to change status' ;
 								}
 							}
 						}
 					}else{
-						
+
 							$inveadd = $conn->prepare('INSERT INTO item_inventory (item_id, inventory_itemstock, inventory_status, item_remarks) VALUES(?,?,?,?)');
 							$inveadd->execute(array($itemID,$item_emove,$change_status,$e_remarks));
 							$invrow = $inveadd->rowCount();
@@ -155,10 +155,10 @@
 								$updateitem = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE item_id = ? AND item_status = ?');
 								$updateitem->execute(array($item_emove,$itemID,$itemStatus));
 								$updateitemrow = $updateitem->rowCount();
-								
+
 								echo ($updateitemrow == 1) ? 'Succesfully changed' : 'Failed to change status' ;
 							}
-						
+
 					}
 
 				}
@@ -188,7 +188,7 @@
 			$select->execute(array($borrowcode,$memid));
 			$fetch = $select->fetchAll();
 			$row = $select->rowCount();
-			
+
 			// $insert = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
 	  //  	 	$insert->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));
 	  //  	 	$rowcou = $insert->rowCount();
@@ -205,7 +205,7 @@
 
 			}
 
-			
+
 		}
 
 		public function edititem($e_number,$e_id,$e_category,$e_brand,$e_description,$e_type,$e_model,$e_mr,$e_price)
@@ -235,21 +235,21 @@
 				$updateitem = $conn->prepare('UPDATE item SET i_deviceID = ?, i_model = ?, i_category = ?, i_brand = ?, i_description = ?, i_type = ?, i_mr = ?, i_price = ? WHERE id = ?');
 				$updateitem->execute(array($e_number,$e_model,$e_category,$e_brand,$e_description,$e_type,$e_mr,$e_price,$itemID));
 				$updateCount = $updateitem->rowCount();
-			
+
 			$imageName = $_FILES['e_photo']['name'];
 			$extension = pathinfo($imageName, PATHINFO_EXTENSION);
 			$tmpData = $_FILES['e_photo']['tmp_name'];
 			$fileName = time();
 			$fileStatus = move_uploaded_file($tmpData,'../../uploads/'.$fileName.".".$extension);
-		 	
+
 			$file = "";
-			
+
 			if($fileStatus):
 				$file = $fileName.".".$extension;
 				$sql = $conn->prepare('UPDATE item SET i_photo = ? WHERE id = ?');
 				$sql->execute(array($file,$itemID));
 			endif;
-			
+
 				echo $updateCount;
 			}
 
@@ -381,26 +381,39 @@
 		}
 
 		public function accept_reservation($code)
-		{
-			global $conn;
+{
+    global $conn;
+    session_start();
 
-			session_start();
-			$h_desc = 'accept client reservation';
-			$h_tbl = 'reservation';
-			$sessionid = $_SESSION['admin_id'];
-			$sessiontype = $_SESSION['admin_type'];
+    $h_desc = 'accept client reservation';
+    $h_tbl = 'reservation';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
 
-			$sql = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
-			$sql->execute(array(1,$code));
-			$row = $sql->rowCount();
-			if($row > 0){
-				$add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES(?,?,?)');
-				$add->execute(array($code,'Accepted Reservation',1));
-				$addrow = $add->rowCount();
+    // Get feedback and approved items from POST
+    $feedback = $_POST['admin_feedback'] ?? '';
+    $approvedItems = $_POST['approved_items'] ?? [];
 
-				echo $addrow;
-			}
-		}
+    // Combine approved items into string
+    // Combine approved items into one string
+    $approvedList = is_array($approvedItems) ? implode(", ", $approvedItems) : '';
+    $finalRemarks = $feedback;
+
+    // ✅ Update reservation status and save approved items
+    $sql = $conn->prepare('UPDATE reservation SET status = ?, approved_items = ? WHERE reservation_code = ?');
+    $sql->execute([1, $approvedList, $code]);
+
+    if ($sql->rowCount() > 0) {
+        $add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES (?, ?, ?)');
+        $add->execute([$code, $finalRemarks, 1]);
+
+        // Optionally update another field or table with $approvedList if needed
+        echo 1;
+    } else {
+        echo 0;
+    }
+}
+
 
 		public function cancel_reservation($remarks_cancel,$codereserve)
 		{
@@ -435,7 +448,7 @@
 			$id= $_POST['id'];
 			$number= $_POST['number_items'];
 			$personincharge= $_POST['personincharge'];
-			
+
 			$sql = $conn->prepare('SELECT * FROM item_stock WHERE id = ?');
 			$sql->execute(array($id));
 			$count = $sql->rowCount();
@@ -462,7 +475,7 @@
 					}
 				}
 
-			
+
 		}
 
 		public function borrowreserve($code)
@@ -542,7 +555,7 @@
 			}
 
 
-				
+
 		}
 
 	}
@@ -592,7 +605,7 @@
 		$e_model = $_POST['e_model'];
 		$e_mr = $_POST['e_mr'];
 		$e_price = $_POST['e_price'];
-		
+
 		$edit->edititem($e_number,$e_id,$e_category,$e_brand,$e_description,$e_type,$e_model,$e_mr,$e_price);
 		break;
 
