@@ -32,8 +32,9 @@
 </head>
 
 <body class="index-body login">
-	
-<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+
+
+	<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
 		<div class="container-fluid">
 			<div class="navbar-header">
 				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#sidebar-collapse">
@@ -44,46 +45,55 @@
 				</button>
 				<a class="navbar-brand" href="#">CAS LABORATORY MANAGEMENT SYSTEM</a>
 			</div>
-		</div>
-	</nav>
+							
+		</div><!-- /.container-fluid -->
+	</nav>	
 
-	<div class="container-fluid" style="margin-top: 60px;">
-		<div class="panel">
-			<div class="panel-body">
-				<div class="col-md-4 col-sm-12 col-xs-12 col-md-offset-4">
-					
-					<!-- Login Form -->
-					<div id="login-form">
-						<form class="frm_memberlogin">
-							<h4 class="alert bg-primary">Borrower Login</h4>
-							<div class="form-group">
-								<label>ID Number</label>
-								<input type="text" name="id_number" class="form-control" placeholder="e.g. 21-1-1-0221" maxlength="14" required autofocus>
-							</div>
-							<div class="form-group">
-								<button class="btn btn-primary btn-block">Log in</button>
-							</div>
-							<div class="form-group text-center">
-								<a href="#" onclick="toggleForms()">Don't have an account? Sign up</a><br>
-								<a href="../">Go to Admin Panel</a>
-							</div>
-						</form>
-					</div>
+
+<div class="container-fluid">
+
+	<div class="panel">
+		<div class="panel-body">
+	<div class="col-md-4 col-sm-12 col-xs-12 col-md-offset-4">
+		<!-- LOGIN FORM -->
+		<div id="login-form">
+			<form class="frm_memberlogin">
+				<h4 class="alert bg-primary">Borrower Login</h4>
+				<div class="form-group">
+					<label>ID Number</label>
+					<input type="text" name="id_number" class="form-control" placeholder="e.g. 21-1-1-0221" maxlength="14" required autofocus>
 				</div>
-									<!-- Sign-up Form -->
-<div id="signup-form" style="display: none;">
-    <h4 class="alert bg-success">Borrower Registration</h4>
-
-    <?php include 'signup_form.php'; ?>
-
-    <div class="form-group text-center">
-        <a href="#" onclick="toggleForms()">Already have an account? Log in</a>
-    </div>
+				<div class="form-group">
+					<button class="btn btn-primary btn-block">Log in</button>
+				</div>
+				<div class="form-group text-center">
+					<a href="#" onclick="toggleForms()">Don't have an account? Sign up</a><br>
+					<a href="../">Go to Admin Panel</a>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
+<div id="signup-form" style="display: none;">
+			<h4 class="alert bg-success">Borrower Registration</h4>
+			<?php include 'signup.php'; ?>
+			<div class="form-group text-center">
+				<a href="#" onclick="toggleForms()">Already have an account? Log in</a>
 			</div>
 		</div>
 	</div>
-
+	
+</div>
+<script>
+	function toggleForms() {
+		const loginForm = document.getElementById('login-form');
+		const signupForm = document.getElementById('signup-form');
+		const isLoginVisible = loginForm.style.display !== 'none';
+		
+		loginForm.style.display = isLoginVisible ? 'none' : 'block';
+		signupForm.style.display = isLoginVisible ? 'block' : 'none';
+	} 
+</script>
 </body>
 
 <?php include 'footer.php'; ?>

@@ -36,8 +36,7 @@
 	}
 }
 
-		public function sign_student($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section, $type)
-
+		public function sign_student($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_major,$s_year,$s_section,$s_password,$type)
 		{
 			global $conn;
 
@@ -46,12 +45,12 @@
 			$sql_count = $sql->rowCount();
 				if($sql_count <= 0 ){
 					
-					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES(?, ?, ?, ?, ?, ?, ?, ?)');
-					$insert->execute(array($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year.' - '.$s_section,$type));
+					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type, m_password) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)');
+					$insert->execute(array($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year.' - '.$s_section,$type,$s_password));
 					$insert_count = $insert->rowCount();
 						
 						if($insert_count > 0){
-							echo "Student";
+							echo "1";
 						}else{
 							echo "0";
 						}
@@ -61,7 +60,7 @@
 				}
 		}
 
-		public function sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type)
+		public function sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$f_password,$type)
 		{
 			global $conn;
 
@@ -70,12 +69,12 @@
 			$sql_count = $sql->rowCount();
 				if($sql_count <= 0 ){
 					
-					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_type) VALUES(?, ?, ?, ?, ?, ?, ?)');
-					$insert->execute(array($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type));
+					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_type, m_password) VALUES(?, ?, ?, ?, ?, ?, ?, ?)');
+					$insert->execute(array($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type,$f_password));
 					$insert_count = $insert->rowCount();
 						
 						if($insert_count > 0){
-							echo "Faculty";
+							echo "1";
 						}else{
 							echo "0";
 						}
@@ -321,7 +320,7 @@
 			// }
 		}
 
-		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section)
+		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_major, $s_year, $s_section)
 {
     global $conn;
 
@@ -340,8 +339,8 @@
 
     if ($sql_count <= 0) {
         // Insert new student record
-        $insert = $conn->prepare('INSERT INTO member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-        $inserted = $insert->execute([$sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year . ' - ' . $s_section, $type]);
+        $insert = $conn->prepare('INSERT INTO member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_major, m_year_section, m_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $inserted = $insert->execute([$sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_major, $s_year . ' - ' . $s_section, $type]);
 
         if ($inserted) {
             // Insert into history logs
@@ -408,36 +407,32 @@
 		$add_function->add_room($name);
 		break;
 
-		case 'sign_student':
-    $sid_number = trim($_POST['sid_number']);
-    $s_fname = strtolower(trim($_POST['s_fname']));
-    $s_lname = strtolower(trim($_POST['s_lname']));
-    $s_gender = trim($_POST['s_gender']);
-    $s_contact = trim($_POST['s_contact']);
-    $s_department = trim($_POST['s_department']);
-    $s_year = trim($_POST['s_year']);
-    $s_section = trim($_POST['s_section']);
-    $type = trim($_POST['type']); // ✅ use actual string "Student"
+		case 'sign_student';
+		$sid_number = trim($_POST['sid_number']);
+ 		$s_fname = strtolower(trim($_POST['s_fname']));
+ 		$s_lname = strtolower(trim($_POST['s_lname']));
+ 		$s_gender = trim($_POST['s_gender']);
+ 		$s_contact = trim($_POST['s_contact']);
+ 		$s_department = trim($_POST['s_department']);
+ 		$s_major = trim($_POST['s_major']);
+ 		$s_year = trim($_POST['s_year']);
+ 		$s_section = trim($_POST['s_section']);
+ 		$s_password = trim(md5($_POST['s_password']));
+ 		$type = 1;
+ 		$add_function->sign_student($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_major,$s_year,$s_section,$s_password,$type);
+		break;
 
-    $add_function->sign_student(
-        $sid_number, $s_fname, $s_lname, $s_gender, $s_contact,
-        $s_department, $s_year, $s_section, $type
-    );
-    break;
-
-
-		case 'sign_faculty':
-    $f_id = trim($_POST['f_id']);
-    $f_fname = strtolower(trim($_POST['f_fname']));
-    $f_lname = strtolower(trim($_POST['f_lname']));
-    $f_gender = trim($_POST['f_gender']);
-    $f_contact = trim($_POST['f_contact']);
-    $f_department = trim($_POST['f_department']);
-    $type = trim($_POST['type']); // ✅ use actual string "Faculty"
-
-    $add_function->sign_faculty($f_id, $f_fname, $f_lname, $f_gender, $f_contact, $f_department, $type);
-    break;
-
+		case 'sign_faculty';
+		$f_id = trim($_POST['f_id']);
+		$f_fname = strtolower(trim($_POST['f_fname']));
+		$f_lname = strtolower(trim($_POST['f_lname']));
+		$f_gender = trim($_POST['f_gender']);
+		$f_contact = trim($_POST['f_contact']);
+		$f_department = trim($_POST['f_department']);
+		$f_password = trim(md5($_POST['f_password']));
+ 		$type = 2;
+		$add_function->sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$f_password,$type);
+		break;
 
 		case 'add_equipment';
 		$e_number = trim($_POST['e_number']);
@@ -507,9 +502,10 @@
  		$s_gender = trim($_POST['s_gender']);
  		$s_contact = trim($_POST['s_contact']);
  		$s_department = trim($_POST['s_department']);
+ 		$s_major = trim($_POST['s_major']);
  		$s_year = trim($_POST['s_year']);
  		$s_section = ucwords(trim($_POST['s_section']));
- 		$add_function->add_newstudent($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year,$s_section);
+ 		$add_function->add_newstudent($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_major,$s_year,$s_section);
 		break;
 
 		case 'add_newfaculty';

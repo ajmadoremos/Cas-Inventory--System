@@ -1,4 +1,3 @@
-
 <?php 
 	include 'header.php';
 ?>
@@ -138,10 +137,9 @@
 											<th>Items</th>
 											<th>Reservation Date</th>
 											<th>Rooms</th>
-											<th>Action</th> <!-- ✅ for Accept & Cancel buttons -->
+											<th>Action</th>
 										</tr>
 									</thead>
-
 								</table>
 							</div>
 
@@ -191,7 +189,6 @@
 			</div>
 		</div>
 	</div>
-
 
 
 <?php include 'footer.php'; ?>
