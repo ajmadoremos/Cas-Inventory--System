@@ -1,7 +1,7 @@
 // edit room
 table_room.on('click', 'a.edit-room', function(e){
     e.preventDefault();
-
+    
     $('.editroom-side').toggle(effect, options, duration);
     var data = table_room.row( $(this).parents('tr') ).data();
     var rm_name = data[0];
@@ -18,11 +18,11 @@ table_room.on('click', 'a.edit-room', function(e){
         var a_name = $('input[name="edit_rm_name"]').val();
 
         if(a_name.toLowerCase() === rm_name.toLowerCase()){
-
+	       	
 	       	toastr.warning('No changes made');
 
         }else{
-
+	       
         	var token = $(this).serialize()+'&key=edit_room';
 	       	$.ajax({
 	       		type: "POST",
@@ -53,9 +53,9 @@ table_room.on('click', 'a.edit-room', function(e){
 
 table_equipment.on('click', 'a.equip_details', function(e){
 	e.preventDefault();
-
+	
 	var data = table_equipment.row( $(this).parents('tr') ).data();
-
+	
     $('.equipment-view').toggle(effect, options, duration);
 
     $('.equipment-form').html('<div class="container-fluid">\
@@ -217,7 +217,7 @@ $('.item-edit').click(function(){
 	var e_photo= $('.e_photo').text();
 	var e_mr= $('.e_mr').text();
 	var e_price= $('.e_price').text();
-
+	
 	// console.log
 	var id = getequipmentid();
 
@@ -419,7 +419,7 @@ $('.equipment-forminfo').html(append);
 			setTimeout(function(){
 				window.location.reload();
 			},3000);
-
+			
 		});
 
 
@@ -819,8 +819,11 @@ table_user.on('click', 'a.edit-upass', function(e){
 
 	});
 
-
+	
 });
+
+
+
 
 
 
@@ -874,7 +877,6 @@ $('.frm_cancelreservation').submit(function(e){
 
 $(document).ready(function () {
     var originalContent = {};
-    
     window.savedItems = {};
     window.savedFeedback = {};
     window.allItems = {};  // ✅ Track all items for accurate feedback check
@@ -888,7 +890,6 @@ $(document).ready(function () {
         originalContent[id] = listContainer.html();
 
         var items = listContainer.find('li');
-        
         var allItemsList = [];
         var html = "<ul>";
 
@@ -969,10 +970,12 @@ $(document).ready(function () {
         $('.btn-accept[data-id="' + id + '"]').show();
         $('.btn-cancel[data-id="' + id + '"]').show();
     });
+
     
 // ✅ ACCEPT Button
 tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     e.preventDefault();
+
     const code = $(this).data('id');
     let approvedItems = [];
     let allItems = [];
@@ -1029,13 +1032,11 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     });
 });
 
-
-
 });
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();
 	var a = $(this).attr('data-id');
-
+	
 
 	$.ajax({
 		type: "POST",
@@ -1066,4 +1067,5 @@ tbl_reserved.on('click', 'button.borrowreserve', function(e){
 			toastr.error('Failed to borrow reservation');
 		}
 	});
+
 });

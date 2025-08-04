@@ -4,13 +4,13 @@
 	// 1 == success
 	// 2 == exist
 	// 0 == failed
-
+	
 	/**
 	* 
 	*/
 	class edit
 	{
-
+		
 		public function edit_room($edit_rm_name,$edit_rm_id)
 		{
 			global $conn;
@@ -34,8 +34,8 @@
 			if($check_row <= 0){
 
 				$sql = $conn->prepare('UPDATE room SET rm_name = ? WHERE id = ?;
-										INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-				$sql->execute(array($edit_rm_name,$edit_rm_id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+				$sql->execute(array($edit_rm_name,$edit_rm_id,$h_desc,$h_tbl,'updated',$sessionid,$sessiontype));
 				$count = $sql->rowCount();
 				if($count > 0){
 					echo "1";
@@ -68,16 +68,16 @@
 
 			if($check_row <= 0){
 				$insert = $conn->prepare('INSERT INTO room_equipment(equipment_id,room_id,re_quantity) VALUES(?,?,?);
-										  UPDATE room_equipment SET re_quantity = (re_quantity - ?) WHERE equipment_id = ? AND room_id = ?;
-										  INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?) ');
-				$insert->execute(array($tbl_id,$assign,$move_item,$move_item,$tbl_id,$current,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    UPDATE room_equipment SET re_quantity = (re_quantity - ?) WHERE equipment_id = ? AND room_id = ?;
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?) ');
+				$insert->execute(array($tbl_id,$assign,$move_item,$move_item,$tbl_id,$current,$h_desc,$h_tbl,'moved',$sessionid,$sessiontype));
 				$row = $insert->rowCount();
 				echo $row;
 			}else{
 				$update = $conn->prepare('UPDATE room_equipment SET re_quantity = ? WHERE equipment_id = ? AND room_id = ?;
-										  UPDATE room_equipment SET re_quantity = (re_quantity - ?) WHERE equipment_id = ? AND room_id = ?;
-										  INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?) ');
-				$update->execute(array($newitem,$tbl_id,$assign,$move_item,$tbl_id,$current,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    UPDATE room_equipment SET re_quantity = (re_quantity - ?) WHERE equipment_id = ? AND room_id = ?;
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?) ');
+				$update->execute(array($newitem,$tbl_id,$assign,$move_item,$tbl_id,$current,$h_desc,$h_tbl,'moved',$sessionid,$sessiontype));
 				$update_row = $update->rowCount();
 				echo $update_row;
 
@@ -124,7 +124,7 @@
 									$updateitem = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE item_id = ? AND item_status = ?');
 									$updateitem->execute(array($item_emove,$itemID,$itemStatus));
 									$updateitemrow = $updateitem->rowCount();
-
+									
 									echo ($updateitemrow == 1) ? 'Succesfully changed' : 'Failed to change status' ;
 								}
 							}
@@ -141,13 +141,13 @@
 									$updateitem = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE item_id = ? AND item_status = ?');
 									$updateitem->execute(array($item_emove,$itemID,$itemStatus));
 									$updateitemrow = $updateitem->rowCount();
-
+									
 									echo ($updateitemrow == 1) ? 'Succesfully changed' : 'Failed to change status' ;
 								}
 							}
 						}
 					}else{
-
+						
 							$inveadd = $conn->prepare('INSERT INTO item_inventory (item_id, inventory_itemstock, inventory_status, item_remarks) VALUES(?,?,?,?)');
 							$inveadd->execute(array($itemID,$item_emove,$change_status,$e_remarks));
 							$invrow = $inveadd->rowCount();
@@ -155,10 +155,10 @@
 								$updateitem = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE item_id = ? AND item_status = ?');
 								$updateitem->execute(array($item_emove,$itemID,$itemStatus));
 								$updateitemrow = $updateitem->rowCount();
-
+								
 								echo ($updateitemrow == 1) ? 'Succesfully changed' : 'Failed to change status' ;
 							}
-
+						
 					}
 
 				}
@@ -188,7 +188,7 @@
 			$select->execute(array($borrowcode,$memid));
 			$fetch = $select->fetchAll();
 			$row = $select->rowCount();
-
+			
 			// $insert = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
 	  //  	 	$insert->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));
 	  //  	 	$rowcou = $insert->rowCount();
@@ -205,7 +205,7 @@
 
 			}
 
-
+			
 		}
 
 		public function edititem($e_number,$e_id,$e_category,$e_brand,$e_description,$e_type,$e_model,$e_mr,$e_price)
@@ -235,21 +235,21 @@
 				$updateitem = $conn->prepare('UPDATE item SET i_deviceID = ?, i_model = ?, i_category = ?, i_brand = ?, i_description = ?, i_type = ?, i_mr = ?, i_price = ? WHERE id = ?');
 				$updateitem->execute(array($e_number,$e_model,$e_category,$e_brand,$e_description,$e_type,$e_mr,$e_price,$itemID));
 				$updateCount = $updateitem->rowCount();
-
+			
 			$imageName = $_FILES['e_photo']['name'];
 			$extension = pathinfo($imageName, PATHINFO_EXTENSION);
 			$tmpData = $_FILES['e_photo']['tmp_name'];
 			$fileName = time();
 			$fileStatus = move_uploaded_file($tmpData,'../../uploads/'.$fileName.".".$extension);
-
+		 	
 			$file = "";
-
+			
 			if($fileStatus):
 				$file = $fileName.".".$extension;
 				$sql = $conn->prepare('UPDATE item SET i_photo = ? WHERE id = ?');
 				$sql->execute(array($file,$itemID));
 			endif;
-
+			
 				echo $updateCount;
 			}
 
@@ -270,8 +270,8 @@
 
 
 			$sql = $conn->prepare('UPDATE member SET m_school_id = ?, m_fname = ?, m_lname = ?, m_gender = ?, m_contact = ?, m_department = ?, m_year_section = ?, m_type = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array($sid_number,$fname,$lname,$s_gender,$s_contact,$s_department,$yrs,$s_type,$app_id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array($sid_number,$fname,$lname,$s_gender,$s_contact,$s_department,$yrs,$s_type,$app_id,$h_desc,$h_tbl,'edited',$sessionid,$sessiontype));
 			$row = $sql->rowCount();
 			echo $row;
 		}
@@ -287,8 +287,8 @@
 			$sessiontype = $_SESSION['admin_type'];
 
 			$sql = $conn->prepare('UPDATE member SET m_status = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array(1,$id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array(1,$id,$h_desc,$h_tbl,'activated',$sessionid,$sessiontype));
 			$row = $sql->rowCount();
 			echo $row;
 		}
@@ -304,8 +304,8 @@
 			$sessiontype = $_SESSION['admin_type'];
 
 			$sql = $conn->prepare('UPDATE member SET m_status = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array(0,$id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array(0,$id,$h_desc,$h_tbl,'deactivated',$sessionid,$sessiontype));
 			$row = $sql->rowCount();
 			echo $row;
 		}
@@ -322,8 +322,8 @@
 			$sessiontype = $_SESSION['admin_type'];
 
 			$sql = $conn->prepare('UPDATE user SET status = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array(1,$id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array(1,$id,$h_desc,$h_tbl,'activated',$sessionid,$sessiontype));
 			$row = $sql->rowCount();
 			echo $row;
 		}
@@ -339,8 +339,8 @@
 			$sessiontype = $_SESSION['admin_type'];
 
 			$sql = $conn->prepare('UPDATE user SET status = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array(0,$id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array(0,$id,$h_desc,$h_tbl,'deactivated',$sessionid,$sessiontype));
 			$row = $sql->rowCount();
 			echo $row;
 		}
@@ -357,8 +357,8 @@
 			$sessiontype = $_SESSION['admin_type'];
 
 			$sql = $conn->prepare('UPDATE user SET name = ?, username = ?, type = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array($u_fname,$u_username,$u_type,$u_id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array($u_fname,$u_username,$u_type,$u_id,$h_desc,$h_tbl,'edited',$sessionid,$sessiontype));
 			$count = $sql->rowCount();
 			echo $count;
 		}
@@ -374,8 +374,8 @@
 			$sessiontype = $_SESSION['admin_type'];
 
 			$sql = $conn->prepare('UPDATE user SET password = ? WHERE id = ?;
-									INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-			$sql->execute(array($n_pass,$u_id,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+			$sql->execute(array($n_pass,$u_id,$h_desc,$h_tbl,'changed password',$sessionid,$sessiontype));
 			$count = $sql->rowCount();
 			echo $count;
 		}
@@ -390,11 +390,9 @@
     $sessionid = $_SESSION['admin_id'];
     $sessiontype = $_SESSION['admin_type'];
 
-    // Get feedback and approved items from POST
     $feedback = $_POST['admin_feedback'] ?? '';
     $approvedItems = $_POST['approved_items'] ?? [];
 
-    // Combine approved items into string
     // Combine approved items into one string
     $approvedList = is_array($approvedItems) ? implode(", ", $approvedItems) : '';
     $finalRemarks = $feedback;
@@ -407,7 +405,6 @@
         $add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES (?, ?, ?)');
         $add->execute([$code, $finalRemarks, 1]);
 
-        // Optionally update another field or table with $approvedList if needed
         echo 1;
     } else {
         echo 0;
@@ -448,7 +445,7 @@
 			$id= $_POST['id'];
 			$number= $_POST['number_items'];
 			$personincharge= $_POST['personincharge'];
-
+			
 			$sql = $conn->prepare('SELECT * FROM item_stock WHERE id = ?');
 			$sql->execute(array($id));
 			$count = $sql->rowCount();
@@ -475,7 +472,7 @@
 					}
 				}
 
-
+			
 		}
 
 		public function borrowreserve($code)
@@ -555,7 +552,7 @@
 			}
 
 
-
+				
 		}
 
 	}
@@ -605,7 +602,7 @@
 		$e_model = $_POST['e_model'];
 		$e_mr = $_POST['e_mr'];
 		$e_price = $_POST['e_price'];
-
+		
 		$edit->edititem($e_number,$e_id,$e_category,$e_brand,$e_description,$e_type,$e_model,$e_mr,$e_price);
 		break;
 

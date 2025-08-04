@@ -7,7 +7,7 @@
 	// 0 == failed
 
 	class add {
-
+		
 		public function add_room($name)
 {
 	global $conn;
@@ -22,8 +22,8 @@
 	$select->execute(array($name));
 	$row = $select->rowCount();
 	if($row <= 0){
-		$sql = $conn->prepare("INSERT INTO room(rm_name, rm_status) VALUES(?, ?) ;
-							   INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)");
+		$sql = $conn->prepare("INSERT INTO room(rm_name, rm_status) VALUES(?, ?);
+        INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)");
 		$sql->execute(array($name, 1, $h_desc, $h_tbl, $sessionid, $sessiontype));
 		$count = $sql->rowCount();
 		if($count > 0){
@@ -45,11 +45,11 @@
 			$sql->execute(array($sid_number,$s_fname,$s_lname,$type));
 			$sql_count = $sql->rowCount();
 				if($sql_count <= 0 ){
-
+					
 					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES(?, ?, ?, ?, ?, ?, ?, ?)');
 					$insert->execute(array($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year.' - '.$s_section,$type));
 					$insert_count = $insert->rowCount();
-
+						
 						if($insert_count > 0){
 							echo "Student";
 						}else{
@@ -69,11 +69,11 @@
 			$sql->execute(array($f_id,$f_fname,$f_lname,$type));
 			$sql_count = $sql->rowCount();
 				if($sql_count <= 0 ){
-
+					
 					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_type) VALUES(?, ?, ?, ?, ?, ?, ?)');
 					$insert->execute(array($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type));
 					$insert_count = $insert->rowCount();
-
+						
 						if($insert_count > 0){
 							echo "Faculty";
 						}else{
@@ -121,23 +121,23 @@
 			$tmpData = $_FILES['e_photo']['tmp_name'];
 			$fileName = time();
 			$fileStatus = move_uploaded_file($tmpData,'../../uploads/'.$fileName.".".$extension);
-
+			
 			$file = "";
-
+			
 			if($fileStatus):
 				$file = $fileName.".".$extension;
 				$sql = $conn->prepare('UPDATE item SET i_photo = ? WHERE id = ?');
 				$sql->execute(array($file,$itemID));
 			endif;
-
+				
 			if($row > 0){
 				$item = $conn->prepare('INSERT INTO item_stock (item_id, room_id, items_stock, item_status)
 										VALUES(?,?,?,?)');
 				$item->execute(array($itemID,$e_assigned,$e_stock,$e_status));
 				$countitem = $item->rowCount();
 					if($countitem > 0){
-						$history = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-						$history->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));
+						$history = $conn->prepare('INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+						$history->execute(array($h_desc,$h_tbl,'added',$sessionid,$sessiontype));
 						$historycount = $history->rowCount();
 						echo $historycount;
 					}
@@ -163,8 +163,8 @@
 				 while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
 		            $sql->execute($data);
 		        }   
-		        $insert = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-		        $insert->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));   
+		        $insert = $conn->prepare('INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+		        $insert->execute(array($h_desc,$h_tbl,'imported',$sessionid,$sessiontype));   
 			}
 			catch(PDOException $e){
 				echo 0;
@@ -178,7 +178,7 @@
 			global $conn;
 
 			session_start();
-
+			
 			$h_tbl = 'equipment';
 			$sessionid = $_SESSION['admin_id'];
 			$sessiontype = $_SESSION['admin_type'];
@@ -186,7 +186,7 @@
 			$sql = $conn->prepare('SELECT * FROM item_stock 
 									LEFT JOIN item ON item.id = item_stock.item_id
 									WHERE item_stock.id = ?');
-
+			
 			$sql->execute(array($id));
 			$count = $sql->rowCount();
 			$fetch = $sql->fetch();
@@ -208,10 +208,10 @@
 					$update_stock->execute(array($item_qty,$id));
 					$updaterow = $update_stock->rowCount();
 					if($updaterow > 0){
-						$history = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-						$history->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));
+						$history = $conn->prepare('INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+						$history->execute(array($h_desc,$h_tbl,'added qty',$sessionid,$sessiontype));
 						$historycount = $history->rowCount();
-
+						
 						echo $rawstock.'|'.$stockleft;
 					}
 				}
@@ -223,7 +223,7 @@
 
 		public function add_borrower($name,$item,$id,$reserve_room,$timeLimit)
 		{
-
+			
 			global $conn;
 
 			session_start();
@@ -279,8 +279,8 @@
 			$count = $sql->rowCount();
 			if($count <= 0){
 				$que = $conn->prepare('INSERT INTO user	(name,username,password,type) VALUES(?,?,?,?);
-										INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-				$que->execute(array($u_fname,$u_username,$u_password,$u_type,$h_desc,$h_tbl,$sessionid,$sessiontype));
+    INSERT INTO history_logs(description,table_name,status_name,user_id,user_type) VALUES(?,?,?,?,?)');
+				$que->execute(array($u_fname,$u_username,$u_password,$u_type,$h_desc,$h_tbl,'added',$sessionid,$sessiontype));
 				$row = $que->rowCount();
 				if($row > 0){
 					echo "1";
@@ -297,7 +297,7 @@
 		{
 			global $conn;
 			$code = date('mdYhis').''.$client_id;
-
+			
 			// $sql = $conn->prepare('SELECT * FROM reservation WHERE reservation_code = ?');
 			// $sql->execute(array($code));
 			// $row = $sql->rowCount();
@@ -317,11 +317,10 @@
 				}
 			// }
 			// foreach ($items as $key => $value) {
-
+				
 			// }
 		}
 
-		
 		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section)
 {
     global $conn;
@@ -346,8 +345,8 @@
 
         if ($inserted) {
             // Insert into history logs
-            $log = $conn->prepare('INSERT INTO history_logs(description, table_name, user_id, user_type) VALUES (?, ?, ?, ?)');
-            $log->execute([$h_desc, $h_tbl, $sessionid, $sessiontype]);
+            $log = $conn->prepare('INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) VALUES (?, ?, ?, ?, ?)');
+            $log->execute([$h_desc, $h_tbl, 'added', $sessionid, $sessiontype]);
 
             echo "1"; // success
         } else {
@@ -357,7 +356,7 @@
         echo "2"; // duplicate school id
     }
 }
-
+ 
 
 		public function add_newfaculty($f_id, $f_fname, $f_lname, $f_gender, $f_contact, $f_department, $type)
 {
@@ -383,9 +382,9 @@
 
         if ($insert_count > 0) {
             // Insert into history_logs table
-            $log = $conn->prepare('INSERT INTO history_logs (description, table_name, user_id, user_type) VALUES (?, ?, ?, ?)');
-            $log->execute(array($h_desc, $h_tbl, $sessionid, $sessiontype));
-
+            $log = $conn->prepare('INSERT INTO history_logs (description, table_name, status_name, user_id, user_type) VALUES (?, ?, ?, ?, ?)');
+            $log->execute(array($h_desc, $h_tbl, 'added', $sessionid, $sessiontype));
+            
             echo "1"; // success
         } else {
             echo "0"; // failed
@@ -491,7 +490,7 @@
 		$add_function->add_users($u_fname,$u_username,$u_password,$u_type);
 		break;
 
-		case 'addclient_reservation';
+		case 'addclient_';
 		$items = $_POST['reserve_item'];
 		$date = $_POST['reserved_date'];
 		$time = $_POST['reserved_time'];
@@ -523,7 +522,7 @@
  		$type = 'Faculty';
 		$add_function->add_newfaculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type);
 		break;
-
+		
 
 
 
@@ -532,3 +531,5 @@
 
 
 	?>
+
+

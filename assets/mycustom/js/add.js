@@ -8,7 +8,7 @@
 $('.frm_addroom').submit(function(e){
 	e.preventDefault();
 	var a = $('input[name="room_name"]');
-
+	
 	$.ajax({
 		type: "POST",
 		url: "../class/add/add",
@@ -40,7 +40,7 @@ $('.frm_addroom').submit(function(e){
 });
 $(document).on('click', '.delete-room', function(e){
     e.preventDefault();
-
+    
     var room_id = $(this).data('id');
 
     if (confirm('Are you sure you want to delete this room?')) {
@@ -71,7 +71,7 @@ $(document).on('click', '.delete-room', function(e){
 
 $(document).on('click', '.delete-member', function(e){
     e.preventDefault();
-
+    
     var member_id = $(this).data('id');
 
     if (confirm('Are you sure you want to delete this member?')) {
@@ -102,7 +102,7 @@ $(document).on('click', '.delete-member', function(e){
 
 $(document).on('click', '.delete-user', function(e){
     e.preventDefault();
-
+    
     var user_id = $(this).data('id');
 
     if (confirm('Are you sure you want to delete this member?')) {
@@ -265,44 +265,36 @@ $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign',
 
 
 
-
-$('.frm_addequipment').submit(function(e){
+$(document).on('submit', '.frm_addequipment', function(e){
 	e.preventDefault();
-	var _this = $(this);
-	var formData = new FormData();
-	var fileData = _this.find('input[type="file"]').prop('files')[0];
-	formData.append("e_photo",fileData);
-	var otherFormData = _this.serializeArray();
-	$.each(otherFormData,function(key,input){
-		formData.append(input.name,input.value);
-	});
+    var _this = $(this);
+    var formData = new FormData(this); // Use the form directly
 
-	$.ajax({
-		type: "POST",
-		url: "../class/add/add",
-		data: formData,
-		async: true,
-		cache: false,
-		contentType: false,
-		processData: false 
-	})
-	.done(function(data){
-		console.log(data);
-		if(data == 1){
-			toastr.success("Item added.");
-			table_equipment.ajax.reload(null,false);
-			$('.cancel-equipment').click();
-			$('.frm_addequipment').find('input').val('');
-		}else if(data == 0){
-			toastr.error("Failed to add item");
-			$('.cancel-equipment').click();
-			$('.frm_addequipment').find('input').val('');
-		}
-	})
-	.fail(function(data){
-		console.log(data);
-	});
-
+    $.ajax({
+        type: "POST",
+        url: "../class/add/add",
+        data: formData,
+        async: true,
+        cache: false,
+        contentType: false,
+        processData: false 
+    })
+    .done(function(data){
+        console.log(data);
+        if(data == 1){
+            toastr.success("Item added.");
+            table_equipment.ajax.reload(null,false);
+            $('.cancel-equipment').click();
+            $('.frm_addequipment').find('input').val('');
+        }else if(data == 0){
+            toastr.error("Failed to add item");
+            $('.cancel-equipment').click();
+            $('.frm_addequipment').find('input').val('');
+        }
+    })
+    .fail(function(data){
+        console.log(data);
+    });
 });
 
 
@@ -387,7 +379,7 @@ $('.frm_borrow').submit(function(e){
 		dataType: 'json'
 	})
 	.done(function(data){
-
+		
 		if(data.response == 1)
 		{
 			toastr.success(data.message);
@@ -681,8 +673,7 @@ $('.add_faculty').click(function () {
 			type: "POST",
 			url: "../class/add/add",
 			data: frmdata
-		})
-		.done(function (data) {
+		}).done(function (data) {
 			if (data == 1) {
 				toastr.success('Faculty successfully added.');
 				$('.btn_frm_add').click();
@@ -690,8 +681,10 @@ $('.add_faculty').click(function () {
 			} else if (data == 2) {
 				toastr.warning('Faculty already exists.');
 			} else {
-				toastr.error('Failed to add.');
+				toastr.error('Failed to add faculty.');
 			}
 		});
 	});
 });
+
+

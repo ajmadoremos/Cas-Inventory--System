@@ -50,9 +50,9 @@
 				$data['data'] = array();
 				echo json_encode($data);
 			}
-
+		
 		}
-
+	
 
 
 
@@ -130,7 +130,7 @@
 			$count = $sql->rowCount();
 			$fetch = $sql->fetchAll();
 			if($count > 0){
-
+				
 				foreach ($fetch as $key => $value) {
 					$data[] = array($value['id'],ucwords($value['rm_name']));
 				}
@@ -150,7 +150,7 @@
 			$count = $sql->rowCount();
 			$fetch = $sql->fetchAll();
 			if($count > 0){
-
+				
 				foreach ($fetch as $key => $value) {
 					$data[] = array($value['id'],ucwords($value['rm_name']));
 				}
@@ -202,7 +202,7 @@
 			// $count = $sql->rowCount();
 			// $fetch = $sql->fetchAll();
 			// if($count > 0){
-
+				
 			// 	foreach ($fetch as $key => $value) {
 			// 		$button = 	'<div class="btn-group">
 			// 						<button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -244,7 +244,7 @@
 				$count = $sql->rowCount();
 				$fetch = $sql->fetchAll();
 					if($count > 0){
-
+						
 						foreach ($fetch as $key => $value) {
 
 
@@ -259,7 +259,7 @@
 
 							$item_status = ($value['item_status'] == 1) ? 'New' : 'Old';
 
-
+						
 							$data['data'][] = array($value['i_model'],ucwords($value['i_category']),ucwords($value['i_brand']),$value['i_description'],$value['items_stock'],ucwords($value['i_type']),$item_status,$button);
 						}
 						echo json_encode($data);
@@ -349,7 +349,7 @@
 
 					$item_stat = ($value['item_status'] == 1 ) ? 'New' : 'Old';
 					$photo = ($value['i_photo'] == "") ? "../assets/noimagefound.jpg" : "../uploads/" . $value['i_photo'];
-
+					
 					$data[] = array('e_photo'=>$photo,
 									'e_deviceid'=>$value['i_deviceID'],
 									'e_category'=>ucwords($value['i_category']),
@@ -384,7 +384,7 @@
 			$count = $sql->rowCount();
 			$fetch = $sql->fetchAll();
 			if($count > 0){
-
+				
 				foreach ($fetch as $key => $value) {
 					$data['data'][] = array($value['i_model'],$value['i_category'],$value['i_brand'],$value['item_rawstock'],$value['items_stock']);
 				}
@@ -395,7 +395,7 @@
 				echo json_encode($data);
 			}
 		}
-
+		
 
 		public function display_equipment_old()
 		{
@@ -413,7 +413,7 @@
 			$count = $sql->rowCount();
 			$fetch = $sql->fetchAll();
 			if($count > 0){
-
+				
 				foreach ($fetch as $key => $value) {
 					$data['data'][] = array($value['i_model'],$value['i_category'],$value['i_brand'],$value['item_rawstock'],$value['items_stock']);
 				}
@@ -436,7 +436,7 @@
 		LEFT JOIN item ON item.id = item_inventory.item_id 
 		WHERE item_inventory.inventory_status = ?
 		GROUP BY item_inventory.item_id, item.i_model, item.i_category, item.i_brand, item_inventory.item_remarks');
-
+	
 	$sql->execute([3]);
 
 	$data = ['data' => []]; // initialize data array
@@ -518,37 +518,36 @@
 // ✅ Entry point for POST call
 
 
-		public function display_equipment_all()
+				public function display_equipment_all()
 {
 	global $conn;
 
-	// No WHERE ? placeholder, so no parameters needed
-	$sql = $conn->prepare('SELECT * FROM item
-							LEFT JOIN item_stock ON item_stock.item_id = item.id
-							GROUP BY item.i_category');
-	$sql->execute(); // ← ✅ No parameter passed
+	$sql = $conn->prepare('
+		SELECT 
+			item.i_category,
+			SUM(item_stock.items_stock) AS total_stock,
+			SUM(item_stock.item_rawstock) AS total_rawstock
+		FROM item
+		LEFT JOIN item_stock ON item_stock.item_id = item.id
+		GROUP BY item.i_category
+	');
+	$sql->execute();
 
-	$count = $sql->rowCount();
-	$fetch = $sql->fetchAll();
+	$data = ['data' => []];
 
-	if ($count > 0) {
-		foreach ($fetch as $key => $value) {
-			$unusable = $value['item_rawstock'] - $value['items_stock'];
-			$data['data'][] = array(
-				$value['i_category'],
-				$value['items_stock'],
-				$unusable,
-				$value['item_rawstock']
-			);
-		}
-	} else {
-		$data['data'] = array();
+	foreach ($sql->fetchAll() as $row) {
+		$unusable = $row['total_rawstock'] - $row['total_stock'];
+		$data['data'][] = [
+			$row['i_category'],
+			$row['total_stock'],
+			$unusable,
+			$row['total_rawstock']
+		];
 	}
 
 	echo json_encode($data);
 }
-
-
+ 
 		public function display_item_borrow()
 		{
 			global $conn;
@@ -575,7 +574,6 @@
 		}
 
 		public function display_borrow()
-		{
 		{ 
 			global $conn; 
 			$sql = $conn->prepare('	SELECT *, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow FROM borrow
@@ -597,13 +595,12 @@
 					$data['data'][] = array($value['m_fname'].' '.$value['m_lname'],$date,$value['item_borrow'],$button,ucwords($value['rm_name']));
 				}
 				echo json_encode($data);
-			}else{
-			  
+			}else{  
 				$data['data'] = array();
 				echo json_encode($data);
 			}
 		}
-	}
+
 		public function display_return()
 		{
 			global $conn; 
@@ -661,7 +658,7 @@
 				echo json_encode($data);
 			}
 		}
-
+		
 	public function pending_reservation()
 {
 	global $conn; 
@@ -739,7 +736,7 @@
 
 
 		public function accept_reservation()
-		{
+{
 	global $conn;
 	$sql = $conn->prepare('
 		SELECT reservation.*, member.m_fname, member.m_lname, room.rm_name
@@ -776,6 +773,7 @@
 		echo json_encode(['data' => []]);
 	}
 }
+
 		public function tbluser_reservation()
 		{
 			global $conn;
@@ -803,7 +801,7 @@
 					}else {
 						$status = 'Borrowed';
 					}
-
+				
 				$date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
 					$data['data'][] = array($date,$value['item_borrow'],ucwords($value['rm_name']),$value['remark'],$status);
 				}
@@ -1109,7 +1107,7 @@
 				$data['data'] = array();
 				echo json_encode($data);
 			}
-
+			
 		}
 
 		public function count_reservation()
@@ -1175,7 +1173,7 @@
 									LEFT JOIN user ON user.id = item_transfer.userid
 									WHERE item_transfer.t_status = ?');
 			}
-
+			
 			$sql->execute(array(1));
 			$count = $sql->rowCount();
 			$fetch = $sql->fetchAll();
@@ -1298,7 +1296,7 @@ $display = new display();
 		case 'display_newtransaction';
 		$display->display_newtransaction();
 		break;
-
+		
 		case 'display_memberselect';
 		$display->display_memberselect();
 		break;
@@ -1440,3 +1438,6 @@ $display = new display();
 	}
 
 
+
+
+?>
