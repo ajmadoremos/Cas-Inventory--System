@@ -155,9 +155,6 @@ function toggleForms() {
   });
 });
 
-
-
-
 $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs', function(e) {
     e.preventDefault();
 
@@ -190,25 +187,24 @@ $(document).off('submit', '.frm_student_signs').on('submit', '.frm_student_signs
         }
     })
     .done(function(data) {
-        $('.btn_student').removeAttr('disabled');
-        data = data.trim();
+    $('.btn_student').removeAttr('disabled');
+    data = data.trim();
+    console.log('AJAX response:', data);  // add this line
 
-        if (data == "Student") {
-            toastr.success('Successfully signup', 'Redirecting page');
-            form.reset(); // ✅ Clear the form
-            setTimeout(function() {
-                window.location = 'login'; // redirect
-            }, 3000);
-        } else if (data == "2") {
-            toastr.warning('Student already exists');
-        } else if (data == "0") {
-            toastr.error('Failed to signup');
-        }
-    })
-    .fail(function(data) {
-        $('.btn_student').removeAttr('disabled');
-        console.log(data);
-    });
+    if (data == "1") {
+        toastr.success('Successfully signup', 'Redirecting page');
+        form.reset();
+        setTimeout(function() {
+            window.location = 'login';
+        }, 3000);
+    } else if (data == "2") {
+        toastr.warning('Student already exists');
+    } else if (data == "0") {
+        toastr.error('Failed to signup');
+    } else {
+        toastr.error('Unexpected response: ' + data);
+    }
+});
 });
 
 
@@ -242,7 +238,7 @@ $(document).off('submit', '.frm_faculty_sign').on('submit', '.frm_faculty_sign',
 
         console.log('✅ Server response:', data);
 
-        if (data == "Faculty") {
+        if (data == "1") {
             toastr.success('Successfully signup', 'Redirecting page');
             form.reset(); // ✅ Clear the form fields
             setTimeout(function() {

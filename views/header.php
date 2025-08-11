@@ -1,6 +1,6 @@
-<?php
+<!-- <?php
 	require_once 'session.php';
-?>
+?> -->
 <!DOCTYPE html>
 <html>
 <head>

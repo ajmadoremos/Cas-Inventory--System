@@ -806,18 +806,19 @@ $.fn.dataTable.ext.errMode = 'throw'; // Show detailed errors
 
 	
 var table_inventory_all = $('.table_inventory_all').DataTable({
-  "ajax": {
-    "url": "../class/display/display",  // or display.php if that's correct
-    "type": "POST",
-    "data": {
-      "key": "display_equipment_all"
-    }
-  },
-  "columns": [
-    { "data": 0, "className": "text-center" },
-    { "data": 1, "className": "text-center" },
-    { "data": 2, "className": "text-center" },
-    { "data": 3, "className": "text-center" }
+  "ajax":
+		{
+			"url": "../class/display/display",
+			"type": "POST",
+			"data": {
+				"key": "display_equipment_all"
+			}
+		},
+  columns: [
+    { data: 0, className: "text-center" },
+    { data: 1, className: "text-center" },
+    { data: 2, className: "text-center" },
+    { data: 3, className: "text-center" }
   ],
   dom: "Bfrtip",
   buttons: [

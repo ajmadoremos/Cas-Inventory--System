@@ -37,29 +37,29 @@
 }
 
 		public function sign_student($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section, $type)
+{
+    global $conn;
 
-		{
-			global $conn;
+    // Check if student ID exists
+    $sql = $conn->prepare('SELECT * FROM member WHERE m_school_id = ?');
+    $sql->execute([$sid_number]);
+    $sql_count = $sql->rowCount();
 
-			$sql = $conn->prepare('SELECT * FROM member WHERE m_school_id = ? AND m_fname = ? AND m_lname = ? AND m_type = ?');
-			$sql->execute(array($sid_number,$s_fname,$s_lname,$type));
-			$sql_count = $sql->rowCount();
-				if($sql_count <= 0 ){
-					
-					$insert = $conn->prepare('INSERT INTO  member(m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES(?, ?, ?, ?, ?, ?, ?, ?)');
-					$insert->execute(array($sid_number,$s_fname,$s_lname,$s_gender,$s_contact,$s_department,$s_year.' - '.$s_section,$type));
-					$insert_count = $insert->rowCount();
-						
-						if($insert_count > 0){
-							echo "Student";
-						}else{
-							echo "0";
-						}
+    if ($sql_count <= 0) {
+        $insert = $conn->prepare('INSERT INTO member (m_school_id, m_fname, m_lname, m_gender, m_contact, m_department, m_year_section, m_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $insert->execute([$sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year . ' - ' . $s_section, $type]);
+        $insert_count = $insert->rowCount();
 
-				}else{
-					echo "2";
-				}
-		}
+        if ($insert_count > 0) {
+            echo "1"; // success
+        } else {
+            echo "0"; // insert failed
+        }
+    } else {
+        echo "2"; // duplicate student ID found
+    }
+}
+
 
 		public function sign_faculty($f_id,$f_fname,$f_lname,$f_gender,$f_contact,$f_department,$type)
 		{
@@ -75,7 +75,7 @@
 					$insert_count = $insert->rowCount();
 						
 						if($insert_count > 0){
-							echo "Faculty";
+							echo "1";
 						}else{
 							echo "0";
 						}
@@ -490,7 +490,7 @@
 		$add_function->add_users($u_fname,$u_username,$u_password,$u_type);
 		break;
 
-		case 'addclient_';
+		case 'addclient_reservation';
 		$items = $_POST['reserve_item'];
 		$date = $_POST['reserved_date'];
 		$time = $_POST['reserved_time'];

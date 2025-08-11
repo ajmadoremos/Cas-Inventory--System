@@ -518,35 +518,52 @@
 // ✅ Entry point for POST call
 
 
-				public function display_equipment_all()
+		public function display_equipment_all()
 {
-	global $conn;
+    global $conn;
 
-	$sql = $conn->prepare('
-		SELECT 
-			item.i_category,
-			SUM(item_stock.items_stock) AS total_stock,
-			SUM(item_stock.item_rawstock) AS total_rawstock
-		FROM item
-		LEFT JOIN item_stock ON item_stock.item_id = item.id
-		GROUP BY item.i_category
-	');
-	$sql->execute();
+    // Enable error reporting for debugging
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
 
-	$data = ['data' => []];
+    $sql = $conn->prepare('
+        SELECT 
+            item.i_category AS category,
+            SUM(COALESCE(item_stock.items_stock, 0)) AS total_stock,
+            SUM(COALESCE(item.item_rawstock, 0)) AS total_rawstock
+        FROM item
+        LEFT JOIN item_stock ON item_stock.item_id = item.id
+        GROUP BY item.i_category
+    ');
+    $sql->execute();
 
-	foreach ($sql->fetchAll() as $row) {
-		$unusable = $row['total_rawstock'] - $row['total_stock'];
-		$data['data'][] = [
-			$row['i_category'],
-			$row['total_stock'],
-			$unusable,
-			$row['total_rawstock']
-		];
-	}
+    $rows = $sql->fetchAll(PDO::FETCH_ASSOC);
 
-	echo json_encode($data);
+    // Debug log
+    file_put_contents(__DIR__ . '/debug_log.txt', 
+        "[" . date('Y-m-d H:i:s') . "] display_equipment_all: " . count($rows) . " rows\n" . 
+        print_r($rows, true) . "\n\n",
+        FILE_APPEND
+    );
+
+    $data = ['data' => []];
+
+    foreach ($rows as $row) {
+        $unusable = $row['total_rawstock'] - $row['total_stock'];
+        $data['data'][] = [
+            $row['category'],       // Category
+            $row['total_stock'],    // New
+            $unusable,              // Old/Damaged/Lost etc.
+            $row['total_rawstock']  // Total
+        ];
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($data);
 }
+
+
+
  
 		public function display_item_borrow()
 		{
@@ -736,44 +753,32 @@
 
 
 		public function accept_reservation()
-{
-	global $conn;
-	$sql = $conn->prepare('
-		SELECT reservation.*, member.m_fname, member.m_lname, room.rm_name
-		FROM reservation
-		LEFT JOIN member ON member.id = reservation.member_id
-		LEFT JOIN room ON room.id = reservation.assign_room
-		WHERE reservation.status = ? GROUP BY reservation.reservation_code
-	');
-	$sql->execute([1]);
-	$fetch = $sql->fetchAll();
-	$count = $sql->rowCount();
-
-	if($count > 0){
-		foreach ($fetch as $value) {
-			$button = "<button class='btn btn-primary borrowreserve' data-id='".$value['reservation_code']."'>
-						Borrow <i class='fa fa-chevron-right'></i>
-					   </button>";
-
-			$date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
-
-			// ✅ Use only the approved items stored in the DB
-			$items = str_replace(", ", "<br>", $value['approved_items']);
-
-			$data['data'][] = array(
-				$value['m_fname'].' '.$value['m_lname'],
-				$items,  // Show only approved items
-				$date,
-				ucwords($value['rm_name']),
-				$button
-			);
+		{
+			global $conn; 
+			$sql = $conn->prepare('		SELECT *, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow FROM reservation
+								 	LEFT JOIN item_stock ON item_stock.id = reservation.stock_id
+								 	LEFT JOIN item ON item.id = item_stock.item_id
+								 	LEFT JOIN member ON member.id = reservation.member_id
+								 	LEFT JOIN room ON room.id = reservation.assign_room
+								 	WHERE reservation.status = ? GROUP BY reservation.reservation_code');
+			$sql->execute(array(1));
+			$fetch = $sql->fetchAll();
+			$count = $sql->rowCount();
+			if($count > 0){
+				foreach ($fetch as $key => $value) {
+				$button = "<button class='btn btn-primary borrowreserve' data-id='".$value['reservation_code']."'>
+							Borrow
+							<i class='fa fa-chevron-right'></i>
+							</button>";
+				$date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
+					$data['data'][] = array($value['m_fname'].' '.$value['m_lname'],$value['item_borrow'],$date,ucwords($value['rm_name']),$button);
+				}
+				echo json_encode($data);
+			}else{
+				$data['data'] = array();
+				echo json_encode($data);
+			}
 		}
-		echo json_encode($data);
-	} else {
-		echo json_encode(['data' => []]);
-	}
-}
-
 		public function tbluser_reservation()
 		{
 			global $conn;
@@ -1256,6 +1261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
+
 $display = new display();
 
 	$key = trim($_POST['key']);
@@ -1326,7 +1332,7 @@ $display = new display();
 		$display->display_equipment_pulled();
 		break;	
 
-		case 'display_equipment_all';
+		case 'display_equipment_all':
 		$display->display_equipment_all();
 		break;
 
