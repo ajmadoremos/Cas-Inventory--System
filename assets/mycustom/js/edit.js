@@ -1014,7 +1014,7 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     let allItems = [];
 
     if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
-        // Read current checkboxes if present
+        // Read from checkboxes
         $(`.item-checkbox[data-code="${code}"]`).each(function () {
             const item = $(this).val();
             allItems.push(item);
@@ -1022,10 +1022,16 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
                 approvedItems.push(item);
             }
         });
-    } else {
-        // Fallback to saved data if checkboxes are gone
-        approvedItems = window.savedItems?.[code] || [];
+    } else if (window.savedItems?.[code]) {
+        // Fallback to saved edit data
+        approvedItems = window.savedItems[code];
         allItems = window.allItems?.[code] || approvedItems;
+    } else {
+        // FINAL fallback: read directly from table cell text
+        const itemsText = $(`.items-cell[data-code="${code}"]`).html(); 
+        // Assuming items are separated by <br> in your table
+        allItems = itemsText.split(/<br\s*\/?>/).map(s => s.trim()).filter(Boolean);
+        approvedItems = [...allItems]; // Approve all by default
     }
 
     let feedback = window.savedFeedback?.[code]?.trim() || "";
@@ -1040,7 +1046,6 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
         ? `All items approved`
         : `Approved items: ${approvedItems.join("<br>")}<br>Not approved: ${allItems.filter(item => !approvedItems.includes(item)).join("<br>")}<br>Feedback: ${feedback}`;
 
-    // Send to backend and save in reservation table
     $.ajax({
         type: "POST",
         url: "../class/edit/edit",

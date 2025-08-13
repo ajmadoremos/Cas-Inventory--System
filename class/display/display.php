@@ -823,25 +823,36 @@
 
             $approved_items_display = "";
 
-if (!empty($value['temp_approved_items'])) {
-    $approved_items_arr = json_decode($value['temp_approved_items'], true);
-    if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
-        $approved_items_display = "<ul>";
-        foreach ($approved_items_arr as $item) {
-            $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
-        }
-        $approved_items_display .= "</ul>";
-    }
-}
+            // ✅ If edited & saved, use the saved approved items
+            if (!empty($value['temp_approved_items'])) {
+                $approved_items_arr = json_decode($value['temp_approved_items'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
+                    $approved_items_display = "<ul>";
+                    foreach ($approved_items_arr as $item) {
+                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                    }
+                    $approved_items_display .= "</ul>";
+                }
+            }
 
-// fallback if empty
-if (empty($approved_items_display)) {
-    $approved_items_display = !empty($value['item_borrow']) ? $value['item_borrow'] : "<em>No approved items</em>";
-}
+            // ✅ Fallback to all borrowed items if no saved approved items
+            if (empty($approved_items_display)) {
+                if (!empty($value['item_borrow'])) {
+                    $all_items_arr = explode('<br/>', $value['item_borrow']);
+                    $approved_items_display = "<ul>";
+                    foreach ($all_items_arr as $item) {
+                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                    }
+                    $approved_items_display .= "</ul>";
+                } else {
+                    $approved_items_display = "<em>No approved items</em>";
+                }
+            }
 
-            $feedback = !empty($value['temp_feedback'])
-                ? "<br/><strong>Feedback:</strong> " . nl2br(htmlspecialchars($value['temp_feedback']))
-                : "";
+            // ✅ Remove feedback display for accepted reservations
+            // $feedback = !empty($value['temp_feedback'])
+            //     ? "<br/><strong>Feedback:</strong> " . nl2br(htmlspecialchars($value['temp_feedback']))
+            //     : "";
 
             $button = "<button class='btn btn-primary borrowreserve' data-id='" . htmlspecialchars($value['reservation_code']) . "'>
                         Borrow
