@@ -591,32 +591,70 @@
 		}
 
 		public function display_borrow()
-		{ 
-			global $conn; 
-			$sql = $conn->prepare('	SELECT *, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow FROM borrow
-								 	LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = borrow.member_id
-								 	LEFT JOIN room ON room.id = borrow.room_assigned
-								 	WHERE borrow.status = ? GROUP BY borrow.borrowcode');
-			$sql->execute(array(1));
-			$fetch = $sql->fetchAll();
-			$count = $sql->rowCount();
-			if($count > 0){
-				foreach ($fetch as $key => $value) {
-				$button = "<button class='btn btn-primary' data-id='".$value['member_id']."/".$value['borrowcode']."'>
-							Return
-							<i class='fa fa-chevron-right'></i>
-							</button>";
-				$date = date('F d,Y H:i:s A', strtotime($value['date_borrow']));
-					$data['data'][] = array($value['m_fname'].' '.$value['m_lname'],$date,$value['item_borrow'],$button,ucwords($value['rm_name']));
-				}
-				echo json_encode($data);
-			}else{  
-				$data['data'] = array();
-				echo json_encode($data);
-			}
-		}
+{ 
+    global $conn; 
+    $sql = $conn->prepare('
+        SELECT 
+            b.borrowcode,
+            b.date_borrow,
+            b.member_id,
+            b.stock_id, -- keep this for return_item()
+            m.m_fname, m.m_lname,
+            ro.rm_name,
+            rs.temp_approved_items
+        FROM borrow b
+        LEFT JOIN member m ON m.id = b.member_id
+        LEFT JOIN room ro ON ro.id = b.room_assigned
+        LEFT JOIN reservation_status rs ON rs.reservation_code = b.borrowcode
+        WHERE b.status = ?
+        GROUP BY b.borrowcode
+    ');
+    $sql->execute([1]);
+    $fetch = $sql->fetchAll(); 
+    $count = $sql->rowCount();
+
+    if ($count > 0) {
+        foreach ($fetch as $value) {
+
+            // ✅ Build bullet list of approved items
+            $approved_items_display = "";
+            if (!empty($value['temp_approved_items'])) {
+                $approved_items_arr = json_decode($value['temp_approved_items'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
+                    $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
+                    foreach ($approved_items_arr as $item) {
+                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                    }
+                    $approved_items_display .= "</ul>";
+                }
+            }
+
+            if (empty($approved_items_display)) {
+                $approved_items_display = "<em>No approved items</em>";
+            }
+
+            // ✅ Keep borrowcode & member_id in button for return_item()
+            $button = "<button class='btn btn-primary' data-id='" . $value['member_id'] . "/" . $value['borrowcode'] . "'>
+                            Return
+                            <i class='fa fa-chevron-right'></i>
+                        </button>";
+
+            $date = date('F d, Y h:i:s A', strtotime($value['date_borrow']));
+
+            $data['data'][] = [
+                htmlspecialchars($value['m_fname'] . ' ' . $value['m_lname']),
+                $date,
+                $approved_items_display,
+                $button,
+                htmlspecialchars(ucwords($value['rm_name']))
+            ];
+        }
+        echo json_encode($data);
+    } else {  
+        $data['data'] = [];
+        echo json_encode($data);
+    }
+}
 
 		public function display_return()
 		{
