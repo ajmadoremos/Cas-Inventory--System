@@ -559,6 +559,8 @@
 		}
 
 	}
+	
+
 
 	$edit = new edit();
 
@@ -656,10 +658,124 @@
 		$edit->changepassword($n_pass,$u_id);
 		break;
 
-		case 'accept_reservation';
-		$code = $_POST['code'];
-		$edit->accept_reservation($code);
-		break;
+		case 'accept_reservation':
+    $code = $_POST['code'];
+
+    // Fetch saved approved items + feedback
+    $stmt = $conn->prepare("
+        SELECT temp_approved_items, temp_feedback
+        FROM reservation_status
+        WHERE reservation_code = ?
+    ");
+    $stmt->execute([$code]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        echo 0; // No saved data found
+        exit;
+    }
+
+    $approvedItems = json_decode($row['temp_approved_items'], true);
+    $feedback = $row['temp_feedback'];
+
+    // Get ALL items with deviceID and category for this reservation
+    $stmtItems = $conn->prepare("
+        SELECT i.i_deviceID, i.i_category, i.i_model, r.item_id
+        FROM reservation r
+        JOIN item i ON r.item_id = i.id
+        WHERE r.reservation_code = ?
+    ");
+    $stmtItems->execute([$code]);
+    $allItemRows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+    // Combine deviceID and category for display: "DeviceID - Category"
+    $allItems = array_map(function($row) {
+        return $row['i_deviceID'] . " - " . $row['i_category'];
+    }, $allItemRows);
+
+    // Build remarks text
+    if (count($approvedItems) === count($allItems)) {
+        $remarks = "All items approved";
+    } else {
+        $remarks = "Approved items: " . implode("<br>", $approvedItems)
+                 . "<br>Not approved: " . implode("<br>", array_diff($allItems, $approvedItems))
+                 . "<br>Feedback for disapproved items: " . $feedback;
+    }
+
+    // Save final remarks + mark reservation_status as accepted
+    $stmt = $conn->prepare("
+        UPDATE reservation_status
+        SET remark = ?, res_status = 1
+        WHERE reservation_code = ?
+    ");
+    $stmt->execute([$remarks, $code]);
+
+    // Update reservation rows to mark approved/rejected
+    foreach ($allItemRows as $rowItem) {
+        $itemFullName = $rowItem['i_deviceID'] . " - " . $rowItem['i_category'];
+        if (in_array($itemFullName, $approvedItems)) {
+            // Approved
+            $stmtUpdate = $conn->prepare("
+                UPDATE reservation
+                SET status = 1
+                WHERE reservation_code = ? AND item_id = ?
+            ");
+            $stmtUpdate->execute([$code, $rowItem['item_id']]);
+        } else {
+            // Rejected
+            $stmtUpdate = $conn->prepare("
+                UPDATE reservation
+                SET status = 2
+                WHERE reservation_code = ? AND item_id = ?
+            ");
+            $stmtUpdate->execute([$code, $rowItem['item_id']]);
+        }
+    }
+
+    // Update overall reservation status to accepted (1)
+    $stmtOverall = $conn->prepare("
+        UPDATE reservation
+        SET status = 1
+        WHERE reservation_code = ?
+    ");
+    $stmtOverall->execute([$code]);
+
+    echo 1; // Success
+    break;
+
+
+
+		case 'save_reservation_items':
+        $code = $_POST['code'];
+        $approvedItems = json_decode($_POST['approved_items'], true);
+        $feedback = $_POST['admin_feedback'];
+
+        // Check if row exists in reservation_status
+        $check = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
+        $check->execute([$code]);
+
+        if ($check->rowCount() > 0) {
+            // Update existing row
+            $stmt = $conn->prepare("
+                UPDATE reservation_status
+                SET temp_approved_items = ?, temp_feedback = ?
+                WHERE reservation_code = ?
+            ");
+            $stmt->execute([json_encode($approvedItems), $feedback, $code]);
+        } else {
+            // Insert new row
+            $stmt = $conn->prepare("
+                INSERT INTO reservation_status (reservation_code, temp_approved_items, temp_feedback, res_status)
+                VALUES (?, ?, ?, 0)
+            ");
+            $stmt->execute([$code, json_encode($approvedItems), $feedback]);
+        }
+
+        echo 1; // Always success
+        break;
+
+
+
 
 		case 'cancel_reservation';
 		$remarks_cancel = $_POST['remarks_cancel'];

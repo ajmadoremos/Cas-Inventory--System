@@ -753,32 +753,80 @@
 
 
 		public function accept_reservation()
-		{
-			global $conn; 
-			$sql = $conn->prepare('		SELECT *, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow FROM reservation
-								 	LEFT JOIN item_stock ON item_stock.id = reservation.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = reservation.member_id
-								 	LEFT JOIN room ON room.id = reservation.assign_room
-								 	WHERE reservation.status = ? GROUP BY reservation.reservation_code');
-			$sql->execute(array(1));
-			$fetch = $sql->fetchAll();
-			$count = $sql->rowCount();
-			if($count > 0){
-				foreach ($fetch as $key => $value) {
-				$button = "<button class='btn btn-primary borrowreserve' data-id='".$value['reservation_code']."'>
-							Borrow
-							<i class='fa fa-chevron-right'></i>
-							</button>";
-				$date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
-					$data['data'][] = array($value['m_fname'].' '.$value['m_lname'],$value['item_borrow'],$date,ucwords($value['rm_name']),$button);
-				}
-				echo json_encode($data);
-			}else{
-				$data['data'] = array();
-				echo json_encode($data);
-			}
-		}
+{
+    global $conn;
+
+    $sql = $conn->prepare("
+        SELECT 
+            r.reservation_code,
+            m.m_fname, m.m_lname,
+            ro.rm_name,
+            r.reserve_date,
+            r.reservation_time,
+            rs.temp_approved_items,
+            rs.temp_feedback,
+            GROUP_CONCAT(CONCAT(i.i_deviceID, ' - ', i.i_category) SEPARATOR '<br/>') AS item_borrow
+        FROM reservation r
+        LEFT JOIN member m ON m.id = r.member_id
+        LEFT JOIN room ro ON ro.id = r.assign_room
+        LEFT JOIN item_stock ist ON ist.id = r.stock_id
+        LEFT JOIN item i ON i.id = ist.item_id
+        LEFT JOIN reservation_status rs ON rs.reservation_code = r.reservation_code
+        WHERE r.status = 1 AND rs.res_status = 1
+        GROUP BY r.reservation_code
+        ORDER BY r.reserve_date DESC, r.reservation_time DESC
+    ");
+    $sql->execute();
+    $fetch = $sql->fetchAll();
+    $count = $sql->rowCount();
+
+    if ($count > 0) {
+        foreach ($fetch as $key => $value) {
+
+            $approved_items_display = "";
+
+if (!empty($value['temp_approved_items'])) {
+    $approved_items_arr = json_decode($value['temp_approved_items'], true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
+        $approved_items_display = "<ul>";
+        foreach ($approved_items_arr as $item) {
+            $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+        }
+        $approved_items_display .= "</ul>";
+    }
+}
+
+// fallback if empty
+if (empty($approved_items_display)) {
+    $approved_items_display = !empty($value['item_borrow']) ? $value['item_borrow'] : "<em>No approved items</em>";
+}
+
+            $feedback = !empty($value['temp_feedback'])
+                ? "<br/><strong>Feedback:</strong> " . nl2br(htmlspecialchars($value['temp_feedback']))
+                : "";
+
+            $button = "<button class='btn btn-primary borrowreserve' data-id='" . htmlspecialchars($value['reservation_code']) . "'>
+                        Borrow
+                        <i class='fa fa-chevron-right'></i>
+                    </button>";
+
+            $date = date('F d, Y h:i:s A', strtotime($value['reserve_date'] . ' ' . $value['reservation_time']));
+
+            $data['data'][] = [
+                htmlspecialchars($value['m_fname'] . ' ' . $value['m_lname']),
+                $approved_items_display,
+                $date,
+                htmlspecialchars(ucwords($value['rm_name'])),
+                $button
+            ];
+        }
+        echo json_encode($data);
+    } else {
+        echo json_encode(['data' => []]);
+    }
+}
+
+
 		public function tbluser_reservation()
 		{
 			global $conn;

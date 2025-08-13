@@ -936,42 +936,75 @@ $(document).ready(function () {
         $('.btn-cancel[data-id="' + id + '"]').show();
     });
 
-    // ✅ SAVE Button
-    tbl_pendingres.on('click', '.btn-save', function () {
-        var id = $(this).data('id');
-        var listContainer = $('.item-list[data-id="' + id + '"]');
+   // Declare globals once (put this somewhere in your script before handlers)
+window.allItems = window.allItems || {};
+window.savedItems = window.savedItems || {};
+window.savedFeedback = window.savedFeedback || {};
 
-        var checkedItems = [];
-        listContainer.find('.item-checkbox:checked').each(function () {
-            checkedItems.push($(this).val());
-        });
+// ✅ SAVE Button
+tbl_pendingres.on('click', '.btn-save', function () {
+    var id = $(this).data('id');
+    var listContainer = $('.item-list[data-id="' + id + '"]');
 
-        var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
-
-        window.savedItems[id] = checkedItems;
-        window.savedFeedback[id] = feedback;
-
-        // Update HTML with only checked items and feedback
-        var html = "<ul>";
-        checkedItems.forEach(function (item) {
-            html += `<li>${item}</li>`;
-        });
-        html += "</ul>";
-
-        if (feedback !== "") {
-            html += `<div><strong>Admin Feedback:</strong><br><em>${feedback}</em></div>`;
-        }
-
-        listContainer.html(html);
-        originalContent[id] = listContainer.html(); // ✅ Update original content with the latest
-
-        // Reset buttons
-        $('.btn-edit[data-id="' + id + '"]').show();
-        $('.btn-accept[data-id="' + id + '"]').show();
-        $('.btn-cancel[data-id="' + id + '"]').show();
+    var checkedItems = [];
+    listContainer.find('.item-checkbox:checked').each(function () {
+        checkedItems.push($(this).val());
     });
 
-    
+    var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
+
+    // Store locally
+    window.savedItems[id] = checkedItems;
+    window.savedFeedback[id] = feedback;
+
+    // Store all items if not stored yet (store full item list)
+    if (!window.allItems[id]) {
+        var allCurrentItems = [];
+        listContainer.find('.item-checkbox').each(function () {
+            allCurrentItems.push($(this).val());
+        });
+        window.allItems[id] = allCurrentItems;
+    }
+
+    // Save directly to reservation table (pending)
+    $.ajax({
+        type: "POST",
+        url: "../class/edit/edit",
+        data: {
+            key: 'save_reservation_items',
+            code: id,
+            approved_items: JSON.stringify(checkedItems),
+            admin_feedback: feedback
+        },
+        success: function (response) {
+            if (response > 0) {
+                toastr.success("Items saved successfully.");
+            } else {
+                toastr.error("Failed to save items.");
+            }
+        }
+    });
+
+    // Update HTML preview (removes checkboxes)
+    var html = "<ul>";
+    checkedItems.forEach(function (item) {
+        html += `<li>${item}</li>`;
+    });
+    html += "</ul>";
+
+    if (feedback !== "") {
+        html += `<div><strong>Admin Feedback:</strong><br><em>${feedback}</em></div>`;
+    }
+
+    listContainer.html(html);
+    originalContent[id] = listContainer.html();
+
+    $('.btn-edit[data-id="' + id + '"]').show();
+    $('.btn-accept[data-id="' + id + '"]').show();
+    $('.btn-cancel[data-id="' + id + '"]').show();
+});
+
+
 // ✅ ACCEPT Button
 tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     e.preventDefault();
@@ -981,6 +1014,7 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     let allItems = [];
 
     if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
+        // Read current checkboxes if present
         $(`.item-checkbox[data-code="${code}"]`).each(function () {
             const item = $(this).val();
             allItems.push(item);
@@ -989,13 +1023,12 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
             }
         });
     } else {
+        // Fallback to saved data if checkboxes are gone
         approvedItems = window.savedItems?.[code] || [];
         allItems = window.allItems?.[code] || approvedItems;
     }
 
-    // ✅ Use saved feedback even if textarea is gone
     let feedback = window.savedFeedback?.[code]?.trim() || "";
-
     const hasDisapproved = approvedItems.length < allItems.length;
 
     if (hasDisapproved && feedback === "") {
@@ -1004,20 +1037,20 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     }
 
     const remarks = (approvedItems.length === allItems.length)
-    ? `All items approved`
-    : `Approved items: ${approvedItems.join("<br>")}<br>Not approved: ${allItems.filter(item => !approvedItems.includes(item)).join("<br>")}<br>Feedback for disapproved items: ${feedback}`;
+        ? `All items approved`
+        : `Approved items: ${approvedItems.join("<br>")}<br>Not approved: ${allItems.filter(item => !approvedItems.includes(item)).join("<br>")}<br>Feedback: ${feedback}`;
 
+    // Send to backend and save in reservation table
     $.ajax({
         type: "POST",
         url: "../class/edit/edit",
         data: {
             key: 'accept_reservation',
             code: code,
-            approved_items: approvedItems,
-            admin_feedback: remarks
+            approved_items: JSON.stringify(approvedItems),
+            remarks: remarks
         },
         success: function (data) {
-            console.log(data);
             if (data > 0) {
                 toastr.success("Successfully accepted reservation.");
                 tbl_pendingres.ajax.reload(null, false);
@@ -1025,13 +1058,9 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
             } else {
                 toastr.error("Failed to accept reservation.");
             }
-        },
-        error: function () {
-            toastr.error("AJAX error occurred.");
         }
     });
 });
-
 });
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();
