@@ -661,18 +661,9 @@
 		case 'accept_reservation':
     $code = $_POST['code'];
 
-    // Fetch saved approved items + feedback
-    $stmt = $conn->prepare("
-        SELECT temp_approved_items, temp_feedback
-        FROM reservation_status
-        WHERE reservation_code = ?
-    ");
-    $stmt->execute([$code]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Get ALL items for this reservation
+    // Get all items for this reservation
     $stmtItems = $conn->prepare("
-        SELECT i.i_deviceID, i.i_category, i.i_model, r.item_id
+        SELECT i.i_deviceID, i.i_category, r.item_id
         FROM reservation r
         JOIN item i ON r.item_id = i.id
         WHERE r.reservation_code = ?
@@ -684,58 +675,42 @@
         return $row['i_deviceID'] . " - " . $row['i_category'];
     }, $allItemRows);
 
-    // ✅ Fallback: if no row OR approved items is empty, approve all
-    if (!$row || empty($row['temp_approved_items'])) {
-        $approvedItems = $allItems;
-        $feedback = "";
+    // Check if reservation_status row exists
+    $stmtCheck = $conn->prepare("SELECT temp_approved_items FROM reservation_status WHERE reservation_code = ?");
+    $stmtCheck->execute([$code]);
+    $statusRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+    if (!$statusRow) {
+        // No row → insert all items as approved
+        $stmt = $conn->prepare("
+            INSERT INTO reservation_status (reservation_code, temp_approved_items, res_status)
+            VALUES (?, ?, 1)
+        ");
+        $stmt->execute([$code, json_encode($allItems)]);
     } else {
-        $approvedItems = json_decode($row['temp_approved_items'], true);
-        if (!is_array($approvedItems)) {
-            $approvedItems = $allItems; // fallback if decode fails
-        }
-        $feedback = $row['temp_feedback'] ?? "";
+        // Row exists → keep existing temp_approved_items, just mark res_status = 1
+        $stmt = $conn->prepare("
+            UPDATE reservation_status
+            SET res_status = 1
+            WHERE reservation_code = ?
+        ");
+        $stmt->execute([$code]);
     }
 
-    // Build remarks text
-    if (count($approvedItems) === count($allItems)) {
-        $remarks = "All items approved";
-    } else {
-        $remarks = "Approved items: " . implode("<br>", $approvedItems)
-                 . "<br>Not approved: " . implode("<br>", array_diff($allItems, $approvedItems))
-                 . "<br>Feedback for disapproved items: " . htmlspecialchars($feedback);
-    }
-
-    // Save final remarks + mark reservation_status as accepted
-    $stmt = $conn->prepare("
-        UPDATE reservation_status
-        SET remark = ?, temp_approved_items = ?, res_status = 1
-        WHERE reservation_code = ?
-    ");
-    $stmt->execute([$remarks, json_encode($approvedItems), $code]);
-
-    // Update reservation rows to mark approved/rejected
+    // Update reservation rows to mark approved
     foreach ($allItemRows as $rowItem) {
-        $itemFullName = $rowItem['i_deviceID'] . " - " . $rowItem['i_category'];
-        $status = in_array($itemFullName, $approvedItems) ? 1 : 2;
-
         $stmtUpdate = $conn->prepare("
             UPDATE reservation
-            SET status = ?
+            SET status = 1
             WHERE reservation_code = ? AND item_id = ?
         ");
-        $stmtUpdate->execute([$status, $code, $rowItem['item_id']]);
+        $stmtUpdate->execute([$code, $rowItem['item_id']]);
     }
-
-    // Update overall reservation status to accepted (1)
-    $stmtOverall = $conn->prepare("
-        UPDATE reservation
-        SET status = 1
-        WHERE reservation_code = ?
-    ");
-    $stmtOverall->execute([$code]);
 
     echo 1; // Success
     break;
+
+
 
 
 

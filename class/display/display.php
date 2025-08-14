@@ -794,6 +794,7 @@
 {
     global $conn;
 
+    // Fetch all reservations that are accepted
     $sql = $conn->prepare("
         SELECT 
             r.reservation_code,
@@ -802,7 +803,6 @@
             r.reserve_date,
             r.reservation_time,
             rs.temp_approved_items,
-            rs.temp_feedback,
             GROUP_CONCAT(CONCAT(i.i_deviceID, ' - ', i.i_category) SEPARATOR '<br/>') AS item_borrow
         FROM reservation r
         LEFT JOIN member m ON m.id = r.member_id
@@ -810,7 +810,7 @@
         LEFT JOIN item_stock ist ON ist.id = r.stock_id
         LEFT JOIN item i ON i.id = ist.item_id
         LEFT JOIN reservation_status rs ON rs.reservation_code = r.reservation_code
-        WHERE r.status = 1 AND rs.res_status = 1
+        WHERE r.status = 1
         GROUP BY r.reservation_code
         ORDER BY r.reserve_date DESC, r.reservation_time DESC
     ");
@@ -823,7 +823,7 @@
 
             $approved_items_display = "";
 
-            // ✅ If edited & saved, use the saved approved items
+            // ✅ If temp_approved_items exists, use it
             if (!empty($value['temp_approved_items'])) {
                 $approved_items_arr = json_decode($value['temp_approved_items'], true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
@@ -835,24 +835,34 @@
                 }
             }
 
-            // ✅ Fallback to all borrowed items if no saved approved items
-            if (empty($approved_items_display)) {
-                if (!empty($value['item_borrow'])) {
-                    $all_items_arr = explode('<br/>', $value['item_borrow']);
-                    $approved_items_display = "<ul>";
-                    foreach ($all_items_arr as $item) {
-                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
-                    }
-                    $approved_items_display .= "</ul>";
-                } else {
-                    $approved_items_display = "<em>No approved items</em>";
-                }
-            }
+            // Fallback: if no temp_approved_items, use item_borrow from reservation
+if (empty($approved_items_display)) {
+    if (!empty($value['item_borrow'])) {
+        $all_items_arr = explode('<br/>', $value['item_borrow']);
+        $approved_items_display = "<ul>";
+        foreach ($all_items_arr as $item) {
+            $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+        }
+        $approved_items_display .= "</ul>";
 
-            // ✅ Remove feedback display for accepted reservations
-            // $feedback = !empty($value['temp_feedback'])
-            //     ? "<br/><strong>Feedback:</strong> " . nl2br(htmlspecialchars($value['temp_feedback']))
-            //     : "";
+        // Only create reservation_status row if it does NOT exist
+        $stmtCheck = $conn->prepare("SELECT * FROM reservation_status WHERE reservation_code = ?");
+        $stmtCheck->execute([$value['reservation_code']]);
+        $statusRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if (!$statusRow) {
+            $stmtInsert = $conn->prepare("
+                INSERT INTO reservation_status (reservation_code, temp_approved_items, res_status)
+                VALUES (?, ?, 1)
+            ");
+            $stmtInsert->execute([$value['reservation_code'], json_encode($all_items_arr)]);
+        }
+        // ✅ Do NOT update if reservation_status already exists
+    } else {
+        $approved_items_display = "<em>No approved items</em>";
+    }
+}
+
 
             $button = "<button class='btn btn-primary borrowreserve' data-id='" . htmlspecialchars($value['reservation_code']) . "'>
                         Borrow
@@ -869,6 +879,7 @@
                 $button
             ];
         }
+
         echo json_encode($data);
     } else {
         echo json_encode(['data' => []]);
