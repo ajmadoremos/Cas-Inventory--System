@@ -591,7 +591,7 @@
 		}
 
 		public function display_borrow()
-{ 
+{
     global $conn; 
     $sql = $conn->prepare('
         SELECT 
@@ -616,8 +616,9 @@
     if ($count > 0) {
         foreach ($fetch as $value) {
 
-            // ✅ Build bullet list of approved items
             $approved_items_display = "";
+
+            // ✅ CASE 1: temp_approved_items exists (normal reservation flow)
             if (!empty($value['temp_approved_items'])) {
                 $approved_items_arr = json_decode($value['temp_approved_items'], true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
@@ -629,8 +630,26 @@
                 }
             }
 
+            // ✅ CASE 2: No temp_approved_items → get items directly from borrow + item
             if (empty($approved_items_display)) {
-                $approved_items_display = "<em>No approved items</em>";
+                $stmtItems = $conn->prepare("
+                    SELECT i.i_deviceID, i.i_category
+                    FROM borrow b
+                    JOIN item i ON b.stock_id = i.id
+                    WHERE b.borrowcode = ?
+                ");
+                $stmtItems->execute([$value['borrowcode']]);
+                $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($items)) {
+                    $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
+                    foreach ($items as $item) {
+                        $approved_items_display .= "<li>" . htmlspecialchars($item['i_deviceID'] . " - " . $item['i_category']) . "</li>";
+                    }
+                    $approved_items_display .= "</ul>";
+                } else {
+                    $approved_items_display = "<em>No approved items</em>";
+                }
             }
 
             // ✅ Keep borrowcode & member_id in button for return_item()
@@ -656,63 +675,94 @@
     }
 }
 
-		public function display_return()
-		{
-			global $conn; 
-			if(isset($_POST['month']) && isset($_POST['year']) && $_POST['month'] != "" && $_POST['year'] != "")
-			{
-				$sql = $conn->prepare("SELECT *, GROUP_CONCAT(item.i_deviceID, ' - ' ,item.i_category,  '<br/>') item_borrow FROM borrow
-								 	LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = borrow.member_id
-								 	WHERE MONTH(borrow.date_borrow) = ".$_POST['month']." AND  YEAR(borrow.date_borrow) = ".$_POST['year']."
-								 	GROUP BY borrow.borrowcode");
-			}
-			else if(isset($_POST['month']) && $_POST['month'] != "")
-			{
-				$sql = $conn->prepare("SELECT *, GROUP_CONCAT(item.i_deviceID, ' - ' ,item.i_category,  '<br/>') item_borrow FROM borrow
-								 	LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = borrow.member_id
-								 	WHERE MONTH(borrow.date_borrow) = ".$_POST['month']." GROUP BY borrow.borrowcode");
-			}
-			else if(isset($_POST['year']) && $_POST['year'] != "")
-			{
-				$sql = $conn->prepare("SELECT *, GROUP_CONCAT(item.i_deviceID, ' - ' ,item.i_category,  '<br/>') item_borrow FROM borrow
-								 	LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = borrow.member_id
-								 	WHERE YEAR(borrow.date_borrow) = ".$_POST['year']."
-								 	GROUP BY borrow.borrowcode");
-			}
-			else
-			{
-				$sql = $conn->prepare('	SELECT *, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow FROM borrow
-								 	LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = borrow.member_id
-								 	GROUP BY borrow.borrowcode');
-			}
 
-			$sql->execute();
-			$fetch = $sql->fetchAll();
-			$count = $sql->rowCount();
-			if($count > 0){
-				foreach ($fetch as $key => $value) {
-				// $button = "<button class='btn btn-primary' data-id='".$value['member_id']."'>
-				// 			Return
-				// 			<i class='fa fa-chevron-right'></i>
-				// 			</button>";
-				$date = ($value['date_return'] == 'NULL' || $value['date_return'] == NULL) ? " --- " : date('F d,Y H:i:s A', strtotime($value['date_return']));
-				$date2 = date('F d,Y H:i:s A', strtotime($value['date_borrow']));
-					$data['data'][] = array($value['m_fname'].' '.$value['m_lname'],$value['item_borrow'],$date,$date2);
-				}
-				echo json_encode($data);
-			}else{
-				$data['data'] = array();
-				echo json_encode($data);
-			}
-		}
+		public function display_return()
+{
+    global $conn; 
+    if(isset($_POST['month']) && isset($_POST['year']) && $_POST['month'] != "" && $_POST['year'] != "")
+    {
+        $sql = $conn->prepare("SELECT *, GROUP_CONCAT(item.i_deviceID, ' - ' ,item.i_category,  '<br/>') item_borrow, rs.temp_approved_items
+                              FROM borrow
+                              LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
+                              LEFT JOIN item ON item.id = item_stock.item_id
+                              LEFT JOIN member ON member.id = borrow.member_id
+                              LEFT JOIN reservation_status rs 
+                                ON rs.reservation_code = borrow.borrowcode
+                              WHERE MONTH(borrow.date_borrow) = ".$_POST['month']." AND  YEAR(borrow.date_borrow) = ".$_POST['year']."
+                              GROUP BY borrow.borrowcode");
+    }
+    else if(isset($_POST['month']) && $_POST['month'] != "")
+    {
+        $sql = $conn->prepare("SELECT *, GROUP_CONCAT(item.i_deviceID, ' - ' ,item.i_category,  '<br/>') item_borrow, rs.temp_approved_items
+                              FROM borrow
+                              LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
+                              LEFT JOIN item ON item.id = item_stock.item_id
+                              LEFT JOIN member ON member.id = borrow.member_id
+                              LEFT JOIN reservation_status rs 
+                                ON rs.reservation_code = borrow.borrowcode
+                              WHERE MONTH(borrow.date_borrow) = ".$_POST['month']."
+                              GROUP BY borrow.borrowcode");
+    }
+    else if(isset($_POST['year']) && $_POST['year'] != "")
+    {
+        $sql = $conn->prepare("SELECT *, GROUP_CONCAT(item.i_deviceID, ' - ' ,item.i_category,  '<br/>') item_borrow, rs.temp_approved_items
+                              FROM borrow
+                              LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
+                              LEFT JOIN item ON item.id = item_stock.item_id
+                              LEFT JOIN member ON member.id = borrow.member_id
+                              LEFT JOIN reservation_status rs 
+                                ON rs.reservation_code = borrow.borrowcode
+                              WHERE YEAR(borrow.date_borrow) = ".$_POST['year']."
+                              GROUP BY borrow.borrowcode");
+    }
+    else
+    {
+        $sql = $conn->prepare('SELECT *, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow, rs.temp_approved_items
+                              FROM borrow
+                              LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
+                              LEFT JOIN item ON item.id = item_stock.item_id
+                              LEFT JOIN member ON member.id = borrow.member_id
+                              LEFT JOIN reservation_status rs 
+                                ON rs.reservation_code = borrow.borrowcode
+                              GROUP BY borrow.borrowcode');
+    }
+
+    $sql->execute();
+    $fetch = $sql->fetchAll();
+    $count = $sql->rowCount();
+    if($count > 0){
+        foreach ($fetch as $key => $value) {
+
+            // ✅ Use approved items if available, otherwise fallback to all borrowed items
+            $approved_items_display = "";
+            if (!empty($value['temp_approved_items']) && trim($value['temp_approved_items']) !== "") {
+                $approved_items_arr = json_decode($value['temp_approved_items'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
+                    $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
+                    foreach ($approved_items_arr as $item) {
+                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                    }
+                    $approved_items_display .= "</ul>";
+                }
+            }
+
+            if (empty($approved_items_display)) {
+                // fallback to showing all borrowed items
+                $approved_items_display = $value['item_borrow'];
+            }
+
+            $date = ($value['date_return'] == 'NULL' || $value['date_return'] == NULL) ? " --- " : date('F d,Y H:i:s A', strtotime($value['date_return']));
+            $date2 = date('F d,Y H:i:s A', strtotime($value['date_borrow']));
+            
+            $data['data'][] = array($value['m_fname'].' '.$value['m_lname'], $approved_items_display, $date, $date2);
+        }
+        echo json_encode($data);
+    } else {
+        $data['data'] = array();
+        echo json_encode($data);
+    }
+}
+
 		
 	public function pending_reservation()
 {

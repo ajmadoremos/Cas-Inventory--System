@@ -710,11 +710,7 @@
     echo 1; // Success
     break;
 
-
-
-
-
-
+	
 		case 'save_reservation_items':
         $code = $_POST['code'];
         $approvedItems = json_decode($_POST['approved_items'], true);
