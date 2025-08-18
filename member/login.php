@@ -50,7 +50,7 @@
 	<div class="container-fluid" style="margin-top: 60px;">
 		<div class="panel">
 			<div class="panel-body">
-				<div class="col-md-4 col-sm-12 col-xs-12 col-md-offset-4">
+				<div class="col-md-4 col-sm-12 col-xs-12 col-md-offset-5">
 					
 					<!-- Login Form -->
 					<div id="login-form">

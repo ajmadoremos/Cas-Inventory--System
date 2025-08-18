@@ -782,7 +782,7 @@ a.bg-danger:hover {
 /*Breadcrumbs*/
 
 .breadcrumb {
-	margin-top: 20px; /* Add spacing below navbar + sidebar */
+	margin-top: 70px; /* Add spacing below navbar + sidebar */
   border-radius: 0;
   padding: 10px 15px;
   background: #e9ecf2;
