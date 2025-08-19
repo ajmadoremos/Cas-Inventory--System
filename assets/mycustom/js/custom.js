@@ -62,13 +62,46 @@ toastr.options = {
 }
 
 
+// Toggle Equipment sidebar
 $('.add_equipment').click(function(){
     $('.equipment-side').toggle(effect, options, duration);
+    $('.reagent-side').hide(); // hide chemical sidebar if open
 });
 
+// Toggle Chemical Reagent sidebar
+$('.add_reagent').click(function(){
+    $('.reagent-side').toggle(effect, options, duration);
+    $('.equipment-side').hide(); // hide equipment sidebar if open
+});
+
+// Cancel buttons
 $('.cancel-equipment').click(function(){
     $('.equipment-side').toggle(effect, options, duration);
 });
+$('.cancel-reagent').click(function(){
+    $('.reagent-side').toggle(effect, options, duration);
+});
+
+// Tab click logic: show only relevant Add button
+$('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+    var target = $(e.target).attr("href"); // get tab ID
+    if(target === "#equipment_tab"){
+        $('.add_equipment').show();
+        $('.add_reagent').hide();
+        $('.reagent-side').hide(); // ensure chemical sidebar is hidden
+    } else if(target === "#chemical_tab"){
+        $('.add_equipment').hide();
+        $('.add_reagent').show();
+        $('.equipment-side').hide(); // ensure equipment sidebar is hidden
+    }
+});
+
+// Initial setup: show equipment button, hide chemical button
+$('.add_equipment').show();
+$('.add_reagent').hide();
+$('.equipment-side').hide();
+$('.reagent-side').hide();
+
 
 $('.student-div').click(function(){
     $('.frm_student_sign').removeClass('hide');

@@ -238,6 +238,43 @@
 
 			}
 		}
+		public function add_reagentqty($id, $reagent_qty)
+{
+    global $conn;
+    session_start();
+
+    $h_tbl = 'chemical_reagents';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
+
+    // Fetch existing reagent
+    $sql = $conn->prepare('SELECT * FROM chemical_reagents WHERE r_id = ?');
+    $sql->execute(array($id));
+    $count = $sql->rowCount();
+    $fetch = $sql->fetch();
+
+    if ($count > 0) {
+        $currentQty = $fetch['r_quantity'];
+        $newQty = $currentQty + $reagent_qty;
+
+        // Update reagent quantity
+        $update = $conn->prepare('UPDATE chemical_reagents SET r_quantity = ? WHERE r_id = ?');
+        $update->execute(array($newQty, $id));
+        $updaterow = $update->rowCount();
+
+        if ($updaterow > 0) {
+            // Log history
+            $h_desc = 'Added ' . $reagent_qty . ' to reagent ' . $fetch['r_name'] . ' (previous: ' . $currentQty . ')';
+            $history = $conn->prepare('INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) VALUES(?,?,?,?,?)');
+            $history->execute(array($h_desc, $h_tbl, 'added qty', $sessionid, $sessiontype));
+
+            echo $currentQty . '|' . $newQty;
+        }
+    } else {
+        echo "Error: Reagent not found.";
+    }
+}
+
 
 		public function add_borrower($name,$item,$id,$reserve_room,$timeLimit)
 		{

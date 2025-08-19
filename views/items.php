@@ -67,6 +67,8 @@
 					Item
 				</a>
 			</li>
+			
+			
 			<li>
 				<a href="members">
 					<svg class="glyph stroked male user ">
@@ -121,27 +123,67 @@
 					</svg> &nbsp;
 					Add Item
 				</button>
+				<button class="btn btn-primary add_reagent">
+					<svg class="glyph stroked plus sign">
+						<use xlink:href="#stroked-plus-sign"/>
+					</svg> &nbsp;
+					Add Chemical Reagent
+				</button>
 			</div>
 		</div><!--/.row-->
+
 		<div class="row">
 			<div class="col-lg-12">
 				<div class="panel panel-default">
 					<div class="panel-body">
-						<table class="table table-bordered table_equipment ">
-							<thead>
-								<tr>
-									<th>Image</th>
-									<th>Model</th>
-									<th>Category</th>
-									<th>Brand</th>
-									<th>Description</th>
-									<th>Quantity</th>
-									<th>Quantity Left</th>
-									<th>Status</th>
-									<th>Action</th>
-								</tr>
-							</thead>
-						</table>
+
+						<!-- Tabs for Equipment & Chemical Reagents -->
+						<ul class="nav nav-tabs" role="tablist">
+							<li class="active"><a href="#equipment_tab" role="tab" data-toggle="tab">Equipment</a></li>
+							<li><a href="#chemical_tab" role="tab" data-toggle="tab">Chemical Reagents</a></li>
+						</ul>
+
+						<div class="tab-content">
+							<!-- Equipment Tab -->
+							<div class="tab-pane fade in active" id="equipment_tab">
+								<br>
+								<table class="table table-bordered table_equipment">
+									<thead>
+										<tr>
+											<th>Image</th>
+											<th>Model</th>
+											<th>Category</th>
+											<th>Brand</th>
+											<th>Description</th>
+											<th>Quantity</th>
+											<th>Quantity Left</th>
+											<th>Status</th>
+											<th>Action</th>
+										</tr>
+									</thead>
+								</table>
+							</div>
+
+							<!-- Chemical Tab -->
+							<div class="tab-pane fade" id="chemical_tab">
+								<br>
+								<table class="table table-bordered table_reagent">
+									<thead>
+										<tr>
+											<th>Name of Reagent</th>
+											<th>Quantity</th>
+											<th>Date Received</th>
+											<th>Date Opened</th>
+											<th>Expiration Date</th>
+											<th>Storage Location</th>
+											<th>Hazard Information</th>
+											<th>Action</th>
+										</tr>
+									</thead>
+								</table>
+							</div>
+						</div>
+
 					</div>
 				</div><!-- panel -->
 			</div><!-- panel -->
@@ -261,6 +303,63 @@
                     </div>
                 </div>
                 <br><br><br>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Chemical Reagent Sidebar -->
+<div class="right-sidebar reagent-side">
+    <div class="sidebar-form">
+        <div class="container-fluid">
+            <h4 class="alert bg-success">
+                <svg class="glyph stroked plus sign">
+                    <use xlink:href="#stroked-plus-sign"/>
+                </svg>
+                Add Chemical Reagent
+            </h4>
+            <form class="frm_addreagent">
+                <input type="hidden" name="key" value="add_reagent">
+                
+                <div class="form-group">
+                    <label>Name of Reagent</label>
+                    <input type="text" name="r_name" placeholder="Enter reagent name" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" name="r_quantity" placeholder="Enter quantity" class="form-control" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Date Received</label>
+                    <input type="date" name="r_date_received" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Date Opened</label>
+                    <input type="date" name="r_date_opened" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Expiration Date</label>
+                    <input type="date" name="r_expiration" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Storage Location</label>
+                    <input type="text" name="r_storage" placeholder="Enter storage location" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Hazard Information</label>
+                    <textarea name="r_hazard" placeholder="Enter hazard info" class="form-control" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <button type="button" class="btn btn-danger btn-block cancel-reagent">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-block">Add Reagent</button>
+                </div>
             </form>
         </div>
     </div>

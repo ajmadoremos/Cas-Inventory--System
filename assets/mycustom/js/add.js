@@ -292,7 +292,38 @@ $(document).on('submit', '.frm_addequipment', function(e){
         console.log(data);
     });
 });
+// Handle Add Chemical Reagent Form Submission
+$(document).on('submit', '.frm_addreagent', function(e){
+    e.preventDefault();
+    var _this = $(this);
+    var formData = new FormData(this); // Use the form directly
 
+    $.ajax({
+        type: "POST",
+        url: "../class/add/add", // Same backend endpoint
+        data: formData,
+        async: true,
+        cache: false,
+        contentType: false,
+        processData: false 
+    })
+    .done(function(data){
+        console.log(data);
+        if(data == 1){
+            toastr.success("Chemical reagent added.");
+            table_reagent.ajax.reload(null,false); // Reload DataTable for reagents
+            $('.cancel-reagent').click(); // Close sidebar
+            $('.frm_addreagent').trigger('reset'); // Clear form
+        }else if(data == 0){
+            toastr.error("Failed to add reagent.");
+            $('.cancel-reagent').click();
+            $('.frm_addreagent').trigger('reset');
+        }
+    })
+    .fail(function(data){
+        console.log(data);
+    });
+});
 
 $(".frm_addmember").submit(function(e){
 	e.preventDefault();

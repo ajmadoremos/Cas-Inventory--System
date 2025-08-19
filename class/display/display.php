@@ -225,6 +225,45 @@
 			// 	echo json_encode($data);
 			// }
 		}
+public function display_reagents()
+{
+    global $conn;
+
+    // Fetch all chemical reagents
+    $sql = $conn->prepare("SELECT * FROM chemical_reagents ORDER BY r_name ASC");
+    $sql->execute();
+    $row = $sql->rowCount();
+    $fetch = $sql->fetchAll();
+
+    if($row > 0){
+        foreach($fetch as $key => $value){
+            // Optional: format quantity if needed
+            $quantity = $value['r_quantity'];
+
+            // Action buttons
+            $button = '<div class="btn-group">
+                           <a href="reagent_info?r_id='.$value['id'].'&token=123" class="btn btn-primary">
+                               <i class="fa fa-search"></i> More info
+                           </a>
+                       </div>';
+
+            $data['data'][] = array(
+                $value['r_name'],
+                $quantity,
+                $value['r_date_received'],
+                $value['r_date_opened'],
+                $value['r_expiration'],
+                $value['r_storage'],
+                $value['r_hazard'],
+                $button
+            );
+        }
+        echo json_encode($data);
+    } else {
+        $data['data'] = array();
+        echo json_encode($data);
+    }
+}
 
 		public function display_roominfo($id,$name)
 		{

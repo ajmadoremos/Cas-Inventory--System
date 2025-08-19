@@ -435,6 +435,60 @@ var table_equipment = $('.table_equipment').DataTable({
 			}
 		]
 });
+var table_reagent = $('.table_reagent').DataTable({
+    "ajax": {
+        "url": "../class/display/display",
+        "type": "POST",
+        "data": {
+            "key": "display_reagent" // Key for chemical reagents
+        }
+    },
+    "columns": [
+        { "data": "r_name", "className": "text-left" },
+        { "data": "r_quantity", "className": "text-left" },
+        { "data": "r_date_received", "className": "text-left" },
+        { "data": "r_date_opened", "className": "text-left" },
+        { "data": "r_expiration", "className": "text-left" },
+        { "data": "r_storage", "className": "text-left" },
+        { "data": "r_hazard", "className": "text-left" },
+        { "data": "r_id", "className": "text-center" } // Action column
+    ],
+    dom: "Bfrtip",
+    buttons: [
+        {
+            extend: "copy",
+            className: "btn-sm btn-success",
+            exportOptions: { columns: [0,1,2,3,4,5] }
+        },
+        {
+            extend: "csv",
+            className: "btn-sm btn-success",
+            exportOptions: { columns: [0,1,2,3,4,5] }
+        },
+        {
+            extend: "excel",
+            className: "btn-sm btn-success",
+            exportOptions: { columns: [0,1,2,3,4,5] }
+        },
+        {
+            extend: "pdfHtml5",
+            className: "btn-sm btn-success",
+            exportOptions: { columns: [0,1,2,3,4,5] }
+        },
+        {
+            extend: "print",
+            className: "btn-sm btn-success",
+            exportOptions: { columns: [0,1,2,3,4,5] },
+            message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+                      <h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
+                      <h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
+                      </center>',
+            customize: function(win) {
+                $(win.document.body).find('table').append('<br><br><br><h4 class="">Noted by:</h4><br><br><br><h4 class="">Prepared by:</h4>');
+            }
+        }
+    ]
+});
 
 var table_inventory_new = $('.table_inventory_new').DataTable({
 		"ajax":
