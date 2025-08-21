@@ -229,41 +229,35 @@ public function display_reagents()
 {
     global $conn;
 
-    // Fetch all chemical reagents
     $sql = $conn->prepare("SELECT * FROM chemical_reagents ORDER BY r_name ASC");
     $sql->execute();
-    $row = $sql->rowCount();
-    $fetch = $sql->fetchAll();
+    $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
 
-    if($row > 0){
-        foreach($fetch as $key => $value){
-            // Optional: format quantity if needed
-            $quantity = $value['r_quantity'];
+    $data = ["data" => []];
 
-            // Action buttons
-            $button = '<div class="btn-group">
-                           <a href="reagent_info?r_id='.$value['id'].'&token=123" class="btn btn-primary">
-                               <i class="fa fa-search"></i> More info
-                           </a>
-                       </div>';
+    foreach ($fetch as $value) {
+        $button = '<div class="btn-group">
+                       <a href="reagent_info?r_id='.$value['r_id'].'&token=123" class="btn btn-primary">
+                           <i class="fa fa-search"></i> More info
+                       </a>
+                   </div>';
 
-            $data['data'][] = array(
-                $value['r_name'],
-                $quantity,
-                $value['r_date_received'],
-                $value['r_date_opened'],
-                $value['r_expiration'],
-                $value['r_storage'],
-                $value['r_hazard'],
-                $button
-            );
-        }
-        echo json_encode($data);
-    } else {
-        $data['data'] = array();
-        echo json_encode($data);
+        $data['data'][] = [
+            "r_name"         => $value['r_name'],
+            "r_quantity"     => $value['r_quantity'],
+            "r_date_received"=> $value['r_date_received'],
+            "r_date_opened"  => $value['r_date_opened'],
+            "r_expiration"   => $value['r_expiration'],
+            "r_storage"      => $value['r_storage'],
+            "r_hazard"       => $value['r_hazard'],
+            "r_id"           => $button // action button goes here
+        ];
     }
+
+    echo json_encode($data);
 }
+
+
 
 		public function display_roominfo($id,$name)
 		{
@@ -1488,6 +1482,10 @@ $display = new display();
 
 		case 'display_equipment';
 		$display->display_equipment();
+		break;
+
+		case 'display_reagents';
+		$display->display_reagents();
 		break;
 
 		case 'display_roominfo';

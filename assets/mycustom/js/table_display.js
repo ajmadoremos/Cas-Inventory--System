@@ -440,7 +440,7 @@ var table_reagent = $('.table_reagent').DataTable({
         "url": "../class/display/display",
         "type": "POST",
         "data": {
-            "key": "display_reagent" // Key for chemical reagents
+            "key": "display_reagents" // Key for chemical reagents
         }
     },
     "columns": [
