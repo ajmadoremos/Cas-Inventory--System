@@ -227,9 +227,62 @@ $.ajax({
         }
     });
  }
+function reagent_info(reagentId){
+    $.ajax({
+        url: "../class/display/display",
+        method: 'POST',
+        data: { key: 'display_reagentinfo', id: reagentId },
+        dataType: 'json',
+        success: function(data){
+            if(data && data.length > 0){
+                let reagent = data[0]; // first (and only) reagent object
 
+                // Populate table cells
+                $('.r_name').text(reagent.r_name);
+                $('.r_quantity').text(reagent.r_quantity);
+                $('.r_date_received').text(reagent.r_date_received);
+                $('.r_date_opened').text(reagent.r_date_opened);
+                $('.r_expiration').text(reagent.r_expiration);
+                $('.r_storage').text(reagent.r_storage);
+                $('.r_hazard').text(reagent.r_hazard);
 
+                // If r_status exists, add a color-coded badge
+                if(reagent.r_status){
+                    let statusLabel = '';
+                    switch(reagent.r_status){
+                        case 'Available':
+                            statusLabel = '<span class="badge badge-success">Available</span>';
+                            break;
+                        case 'Out of Stock':
+                            statusLabel = '<span class="badge badge-warning">Out of Stock</span>';
+                            break;
+                        case 'Expired':
+                            statusLabel = '<span class="badge badge-danger">Expired</span>';
+                            break;
+                        default:
+                            statusLabel = '<span class="badge badge-secondary">'+reagent.r_status+'</span>';
+                    }
+                    $('.r_status').html(statusLabel);
+                }
 
+            } else {
+                console.log("No data returned for reagent ID:", reagentId);
+                $('.table tbody td').text('N/A'); // fallback if no data
+            }
+        },
+        error: function(xhr, status, error){
+            console.error("AJAX error:", xhr.responseText);
+            $('.table tbody td').text('Error loading data'); // fallback
+        }
+    });
+}
+
+// Automatically call reagent_info if a global ID is set
+if(typeof id !== 'undefined' && id !== ''){
+    $(document).ready(function(){
+        reagent_info(id);
+    });
+}
 
 
 

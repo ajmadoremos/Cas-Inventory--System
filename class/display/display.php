@@ -367,6 +367,44 @@ public function display_reagents()
 		}
 
 
+		public function display_reagentinfo($id)
+{
+    global $conn;
+
+    $sql = $conn->prepare("
+        SELECT cr.r_name, cr.r_quantity, cr.r_date_received, cr.r_date_opened,
+               cr.r_expiration, cr.r_storage, cr.r_hazard
+        FROM chemical_reagents cr
+        WHERE cr.r_id = ?
+    ");
+
+    $sql->execute(array($id));
+    $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
+
+    $data = [];
+
+    if(!empty($fetch)){
+        foreach ($fetch as $value) {
+            $data[] = [
+                'r_name'          => ucwords($value['r_name']),
+                'r_quantity'      => $value['r_quantity'],
+                'r_date_received' => !empty($value['r_date_received']) ? date('F d, Y', strtotime($value['r_date_received'])) : '',
+                'r_date_opened'   => !empty($value['r_date_opened']) ? date('F d, Y', strtotime($value['r_date_opened'])) : '',
+                'r_expiration'    => !empty($value['r_expiration']) ? date('F d, Y', strtotime($value['r_expiration'])) : '',
+                'r_storage'       => ucwords($value['r_storage']),
+                'r_hazard'        => $value['r_hazard']
+            ];
+        }
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit;
+}
+
+
+
+
 		public function display_equipmentinfo($id)
 		{
 			global $conn;
@@ -1500,6 +1538,11 @@ $display = new display();
 		
 		case 'display_memberselect';
 		$display->display_memberselect();
+		break;
+
+		case 'display_reagentinfo';
+		$id = trim ($_POST['id']);
+		$display->display_reagentinfo($id);
 		break;
 
 		case 'display_equipmentinfo';
