@@ -311,19 +311,21 @@ $(document).on('submit', '.frm_addreagent', function(e){
         console.log(data);
         if(data == 1){
             toastr.success("Chemical reagent added.");
-            table_reagent.ajax.reload(null,false); // Reload DataTable for reagents
+            table_reagent.ajax.reload(null,true); // ✅ force refresh
             $('.cancel-reagent').click(); // Close sidebar
-            $('.frm_addreagent').trigger('reset'); // Clear form
+            _this[0].reset(); // ✅ clear form
         }else if(data == 0){
             toastr.error("Failed to add reagent.");
             $('.cancel-reagent').click();
-            $('.frm_addreagent').trigger('reset');
+            _this[0].reset(); // ✅ clear form
         }
     })
     .fail(function(data){
         console.log(data);
     });
 });
+
+
 
 $(".frm_addmember").submit(function(e){
 	e.preventDefault();

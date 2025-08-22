@@ -274,6 +274,32 @@
         echo "Error: Reagent not found.";
     }
 }
+public function add_reagent($r_name, $r_quantity, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard)
+{
+    global $conn;
+    session_start();
+
+    $h_tbl = 'chemical_reagents';
+    $sessionid = $_SESSION['admin_id'] ?? 0;
+    $sessiontype = $_SESSION['admin_type'] ?? 'admin';
+
+    $sql = $conn->prepare("INSERT INTO chemical_reagents 
+        (r_name, r_quantity, r_date_received, r_date_opened, r_expiration, r_storage, r_hazard)
+        VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $inserted = $sql->execute([$r_name, $r_quantity, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard]);
+
+    if($inserted){
+        // Log history
+        $h_desc = "Added new reagent: $r_name ($r_quantity)";
+        $history = $conn->prepare('INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) VALUES(?,?,?,?,?)');
+        $history->execute([$h_desc, $h_tbl, 'added', $sessionid, $sessiontype]);
+
+        echo 1; // ✅ return plain 1
+    } else {
+        echo 0; // ✅ return plain 0
+    }
+}
+
 
 
 		public function add_borrower($name,$item,$id,$reserve_room,$timeLimit)
@@ -493,6 +519,17 @@
     $add_function->sign_faculty($f_id, $f_fname, $f_lname, $f_gender, $f_contact, $f_department, $type);
     break;
 
+	case 'add_reagent';
+    $r_name = trim($_POST['r_name']);
+    $r_quantity = trim($_POST['r_quantity']);
+    $r_date_received = $_POST['r_date_received'] ?? null;
+    $r_date_opened = $_POST['r_date_opened'] ?? null;
+    $r_expiration = $_POST['r_expiration'] ?? null;
+    $r_storage = trim($_POST['r_storage']);
+    $r_hazard = trim($_POST['r_hazard']);
+
+    $add_function->add_reagent($r_name, $r_quantity, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard);
+    break;
 
 		case 'add_equipment';
 		$e_number = trim($_POST['e_number']);
