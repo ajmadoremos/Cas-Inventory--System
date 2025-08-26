@@ -396,6 +396,54 @@ $('.item-add').click(function(){
 
     });
 });
+// Handle Add Quantity button for reagents
+$('.reagent-add').click(function(){
+    $('.reagent-info').toggle(effect, options, duration);
+    var id = getReagentId(); // get reagent id
+
+    var append = '  <form class="frm_radditem">\
+                        <h4 class="alert bg-success">Add Quantity</h4>\
+                        <div class="form-group">\
+                            <label>Quantity (ml)</label>\
+                            <input type="number" name="reagent_qty" class="form-control" min="1" required autofocus="on">\
+                            <input type="hidden" name="id" value="'+id+'">\
+                            <input type="hidden" name="key" value="add_reagentqty">\
+                        </div>\
+                        <div class="form-group">\
+                            <button class="btn btn-danger cancel-reagentinfo" type="button">Cancel</button>\
+                            <button class="btn btn-primary" type="submit">Add</button>\
+                        </div>\
+                    </form>';
+
+    $('.reagent-forminfo').html(append);
+
+    // cancel button
+    $('.cancel-reagentinfo').click(function(){
+        $('.reagent-info').toggle(effect, options, duration);
+    });
+
+    // submit handler
+    $('form.frm_radditem').submit(function(e){
+        e.preventDefault();
+        var c = $(this).serialize();
+
+        $.ajax({
+            type: "POST",
+            url: "../class/add/add", // backend
+            data: c
+        })
+        .done(function(data){
+            var ab = data.split('|');  
+            // ab[0] = old qty, ab[1] = new qty
+            $('.r_quantity').html(ab[1] + ' ml');  
+            toastr.success('Quantity updated from ' + ab[0] + ' ml to ' + ab[1] + ' ml');
+            $('.reagent-info').toggle(effect, options, duration);
+        })
+        .fail(function(){
+            toastr.error('Error adding reagent quantity');
+        });
+    });
+});
 
 
 $('.frm_borrow').submit(function(e){

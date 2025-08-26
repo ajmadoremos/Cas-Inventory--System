@@ -291,7 +291,10 @@ $('body').on('click', '.equipment-forminfo .cancel-equipmentinfo', function(e){
     $('.equipment-info').toggle(effect, options, duration);
 });
 
-
+$('body').on('click', '.reagent-forminfo .cancel-reagentinfo', function(e){
+    e.preventDefault();
+    $('.reagent-info').toggle(effect, options, duration);
+});
 
 
 

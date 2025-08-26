@@ -325,6 +325,85 @@ $('.item-edit').click(function(){
     });
 });
 
+// Handle Edit Reagent
+$('.reagent-edit').click(function(){
+    $('.reagent-info').toggle(effect, options, duration);
+
+    // Get values from the table cells
+    var r_name = $('.r_name').text(); 
+    var r_date_received = $('.r_date_received').text();
+    var r_date_opened = $('.r_date_opened').text();
+    var r_expiration = $('.r_expiration').text();
+    var r_storage = $('.r_storage').text();
+    var r_hazard = $('.r_hazard').text();
+    var id = getReagentId();
+
+    var append = '  <form class="frm_editreagent" enctype="multipart/form-data">\
+                        <h4 class="alert bg-success">Edit Reagent</h4>\
+                        <div class="form-group">\
+                            <label>Name of Reagent</label>\
+                            <input type="text" name="r_name" class="form-control" value="'+r_name+'" required>\
+                            <input type="hidden" name="id" value="'+id+'">\
+                            <input type="hidden" name="key" value="edit_reagent">\
+                        </div>\
+                        <div class="form-group">\
+                            <label>Date Received</label>\
+                            <input type="date" name="r_date_received" class="form-control" value="'+r_date_received+'">\
+                        </div>\
+                        <div class="form-group">\
+                            <label>Date Opened</label>\
+                            <input type="date" name="r_date_opened" class="form-control" value="'+r_date_opened+'">\
+                        </div>\
+                        <div class="form-group">\
+                            <label>Expiration Date</label>\
+                            <input type="date" name="r_expiration" class="form-control" value="'+r_expiration+'">\
+                        </div>\
+                        <div class="form-group">\
+                            <label>Storage Location</label>\
+                            <input type="text" name="r_storage" class="form-control" value="'+r_storage+'">\
+                        </div>\
+                        <div class="form-group">\
+                            <label>Hazard Information</label>\
+                            <textarea name="r_hazard" class="form-control">'+r_hazard+'</textarea>\
+                        </div>\
+                        <hr/>\
+                        <div class="form-group">\
+                            <button class="btn btn-danger cancel-reagentinfo" type="button">Cancel</button>\
+                            <button class="btn btn-primary" type="submit">Update</button>\
+                        </div>\
+                    </form>';
+
+    $('.reagent-forminfo').html(append);
+
+    // cancel button
+    $('.cancel-reagentinfo').click(function(){
+        $('.reagent-info').toggle(effect, options, duration);
+    });
+
+    // submit handler
+    $('.frm_editreagent').submit(function(e){
+        e.preventDefault();
+        var formData = $(this).serialize();
+
+        $.ajax({
+            type: "POST",
+            url: "../class/edit/edit",
+            data: formData
+        })
+        .done(function(data){
+            toastr.success("Reagent successfully updated.");
+            // refresh displayed info
+            reagent_info(id);
+            $('.cancel-reagentinfo').click();
+        })
+        .fail(function(err){
+            console.log(err);
+            toastr.error("Error updating reagent.");
+        });
+    });
+});
+
+
 $('.item-change').click(function(){
     $('.equipment-info').toggle(effect, options, duration);
 
@@ -426,6 +505,80 @@ $('.equipment-forminfo').html(append);
 	});
 
 });
+
+$('.reagent-change').click(function(){
+    $('.reagent-info').toggle(effect, options, duration);
+
+    var id = getReagentId();
+
+    var formHtml = `
+    <form class="frm_rchangeitem">
+        <h4 class="alert bg-success">Change Reagent Status</h4>
+
+        <div class="form-group">
+            <label>Status</label>
+            <select name="change_status" class="form-control" required>
+                <option value="">-- Select Status --</option>
+                <option value="1">Available</option>
+                <option value="0">Expired</option>
+            </select>
+            <input type="hidden" name="id" value="${id}">
+            <input type="hidden" name="key" value="edit_reagentstatus">
+        </div>
+
+        <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" name="r_quantity" class="form-control" min="0" placeholder="Enter quantity" required disabled>
+        </div>
+
+        <div class="form-group">
+            <label>Remarks</label>
+            <textarea class="form-control" name="r_remarks"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button class="btn btn-danger cancel-reagentinfo" type="button">Cancel</button>
+            <button class="btn btn-primary" type="submit">Update</button>
+        </div>
+    </form>
+    `;
+
+    $('.reagent-forminfo').html(formHtml);
+
+    // Enable quantity only after status selected
+    $('select[name="change_status"]').on('change', function(){
+        if($(this).val() !== ""){
+            $('input[name="r_quantity"]').prop('disabled', false);
+            $('input[name="r_quantity"]').attr("placeholder", 
+                $(this).val() == "1" ? "Enter number available" : "Enter number expired"
+            );
+        } else {
+            $('input[name="r_quantity"]').prop('disabled', true).val('');
+        }
+    });
+
+    // Handle form submit
+    $('.frm_rchangeitem').submit(function(e){
+        e.preventDefault();
+        var formData = $(this).serialize();
+
+        $.ajax({
+            type: "POST",
+            data: formData,
+            url: "../class/edit/edit"
+        })
+        .done(function(data){
+            console.log(data);
+            $('.reagent-info').toggle(effect, options, duration);
+            toastr.success(data);
+
+            setTimeout(function(){
+                window.location.reload();
+            }, 2000);
+        });
+    });
+});
+
 
 
 tbl_borrow.on('click', 'button', function(e){

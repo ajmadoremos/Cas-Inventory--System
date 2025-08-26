@@ -257,6 +257,34 @@
 
 		}
 
+		public function edit_reagent($id, $r_name, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard)
+{
+    global $conn;
+    session_start();
+
+    $h_tbl = 'chemical_reagents';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
+
+    try {
+        $sql = $conn->prepare("UPDATE chemical_reagents 
+            SET r_name = ?, r_date_received = ?, r_date_opened = ?, r_expiration = ?, r_storage = ?, r_hazard = ?
+            WHERE r_id = ?");
+        $sql->execute([$r_name, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard, $id]);
+
+        // Log history
+        $h_desc = "Updated reagent $r_name (ID: $id)";
+        $history = $conn->prepare("INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) VALUES(?,?,?,?,?)");
+        $history->execute([$h_desc, $h_tbl, 'edit', $sessionid, $sessiontype]);
+
+        echo "success";
+    } catch (PDOException $e) {
+        echo "error: " . $e->getMessage();
+    }
+}
+
+
+
 		public function edit_member($sid_number,$fname,$lname,$s_gender,$s_contact,$s_department,$s_type,$yrs,$app_id)
 		{
 
@@ -763,4 +791,21 @@
 		$qty_transfer = $_POST['qty_transfer'];
 		$edit->return_transfer($id,$qty_transfer);
 		break;
+
+		case 'edit_reagent':
+    	$id = $_POST['id'];
+    	$r_name = trim($_POST['r_name']);
+    	$r_date_received = $_POST['r_date_received'] ?? null;
+    	$r_date_opened = $_POST['r_date_opened'] ?? null;
+    	$r_expiration = $_POST['r_expiration'] ?? null;
+    	$r_storage = trim($_POST['r_storage']);
+    	$r_hazard = trim($_POST['r_hazard']);
+
+    	$edit->edit_reagent(
+        $id, $r_name, $r_date_received,
+        $r_date_opened, $r_expiration, $r_storage, $r_hazard
+    );
+    break;
+
+
 	}

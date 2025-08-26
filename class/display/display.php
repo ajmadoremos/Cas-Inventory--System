@@ -245,6 +245,7 @@ public function display_reagents()
         $data['data'][] = [
             "r_name"         => $value['r_name'],
             "r_quantity"     => $value['r_quantity'],
+			"unit"           => $value['unit'],
             "r_date_received"=> $value['r_date_received'],
             "r_date_opened"  => $value['r_date_opened'],
             "r_expiration"   => $value['r_expiration'],
@@ -372,7 +373,7 @@ public function display_reagents()
     global $conn;
 
     $sql = $conn->prepare("
-        SELECT cr.r_name, cr.r_quantity, cr.r_date_received, cr.r_date_opened,
+        SELECT cr.r_name, cr.r_quantity, cr.unit, cr.r_date_received, cr.r_date_opened,
                cr.r_expiration, cr.r_storage, cr.r_hazard
         FROM chemical_reagents cr
         WHERE cr.r_id = ?
@@ -388,6 +389,7 @@ public function display_reagents()
             $data[] = [
                 'r_name'          => ucwords($value['r_name']),
                 'r_quantity'      => $value['r_quantity'],
+                'unit'            => $value['unit'], // ✅ added unit
                 'r_date_received' => !empty($value['r_date_received']) ? date('F d, Y', strtotime($value['r_date_received'])) : '',
                 'r_date_opened'   => !empty($value['r_date_opened']) ? date('F d, Y', strtotime($value['r_date_opened'])) : '',
                 'r_expiration'    => !empty($value['r_expiration']) ? date('F d, Y', strtotime($value['r_expiration'])) : '',
@@ -401,7 +403,6 @@ public function display_reagents()
     echo json_encode($data);
     exit;
 }
-
 
 
 
