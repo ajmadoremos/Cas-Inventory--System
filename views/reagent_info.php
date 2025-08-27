@@ -143,8 +143,8 @@
 									<td class="r_quantity"></td>
 								</tr>
 								<tr>
-           							<td class="col-sm-6">Unit</td>
-           	 						<td class="r_unit"></td> <!-- ✅ new row for unit -->
+           							<td class="col-sm-6">Quantity (ml)</td>
+           	 						<td class="unit"></td> <!-- ✅ new row for unit -->
         						</tr>
 								<tr>
 									<td class="col-sm-6">Date Received</td>

@@ -240,6 +240,7 @@ function reagent_info(reagentId){
                 // Populate table cells
                 $('.r_name').text(reagent.r_name);
                 $('.r_quantity').text(reagent.r_quantity);
+                $('.unit').text(reagent.unit + ' ml');
                 $('.r_date_received').text(reagent.r_date_received);
                 $('.r_date_opened').text(reagent.r_date_opened);
                 $('.r_expiration').text(reagent.r_expiration);

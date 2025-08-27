@@ -404,10 +404,14 @@ $('.reagent-add').click(function(){
     var append = '  <form class="frm_radditem">\
                         <h4 class="alert bg-success">Add Quantity</h4>\
                         <div class="form-group">\
-                            <label>Quantity (ml)</label>\
-                            <input type="number" name="reagent_qty" class="form-control" min="1" required autofocus="on">\
+                            <label>Quantity</label>\
+                            <input type="number" name="reagent_qty" class="form-control" min="1">\
                             <input type="hidden" name="id" value="'+id+'">\
-                            <input type="hidden" name="key" value="add_reagentqty">\
+                        </div>\
+                        <div class="form-group">\
+                            <label>Quantity (ml)</label>\
+                            <input type="number" name="reagent_unitqty" class="form-control" min="1">\
+                            <input type="hidden" name="id" value="'+id+'">\
                         </div>\
                         <div class="form-group">\
                             <button class="btn btn-danger cancel-reagentinfo" type="button">Cancel</button>\
@@ -425,18 +429,48 @@ $('.reagent-add').click(function(){
     // submit handler
     $('form.frm_radditem').submit(function(e){
         e.preventDefault();
-        var c = $(this).serialize();
+
+        var qty = $('input[name="reagent_qty"]').val();
+        var unitqty = $('input[name="reagent_unitqty"]').val();
+        var id = $('input[name="id"]').val();
+
+        // Require at least one field
+        if(!qty && !unitqty){
+            toastr.warning('Please fill at least one quantity field.');
+            return;
+        }
+
+        // Build payload depending on which field was filled
+        var postData = { id: id };
+        if(qty){
+            postData.key = 'add_reagentqty';
+            postData.reagent_qty = qty;
+        }
+        if(unitqty){
+            postData.key = 'add_reagentunitqty';
+            postData.reagent_unitqty = unitqty;
+        }
 
         $.ajax({
             type: "POST",
             url: "../class/add/add", // backend
-            data: c
+            data: postData
         })
         .done(function(data){
             var ab = data.split('|');  
             // ab[0] = old qty, ab[1] = new qty
-            $('.r_quantity').html(ab[1] + ' ml');  
-            toastr.success('Quantity updated from ' + ab[0] + ' ml to ' + ab[1] + ' ml');
+
+            if(qty){  
+                // Update quantity
+                $('.r_quantity').html(ab[1]);  
+                toastr.success('Quantity updated from ' + ab[0] + ' to ' + ab[1]);
+            }
+            if(unitqty){  
+                // Update unit (ml)
+                $('.unit').html(ab[1] + ' ml');  
+                toastr.success('Quantity (ml) updated from ' + ab[0] + ' ml to ' + ab[1] + ' ml');
+            }
+
             $('.reagent-info').toggle(effect, options, duration);
         })
         .fail(function(){
@@ -444,6 +478,7 @@ $('.reagent-add').click(function(){
         });
     });
 });
+
 
 
 $('.frm_borrow').submit(function(e){

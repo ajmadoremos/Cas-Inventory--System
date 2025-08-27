@@ -271,8 +271,41 @@
         echo "Error: Reagent not found.";
     }
 }
+public function add_reagentunitqty($id, $reagent_unitqty)
+{
+    global $conn;
+    session_start();
 
-public function add_reagent($r_name, $r_quantity, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard)
+    $h_tbl = 'chemical_reagents';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
+
+    $sql = $conn->prepare('SELECT * FROM chemical_reagents WHERE r_id = ?');
+    $sql->execute(array($id));
+    $count = $sql->rowCount();
+    $fetch = $sql->fetch();
+
+    if ($count > 0) {
+        $currentQty = $fetch['unit'];
+        $newQty = $currentQty + $reagent_unitqty;
+
+        $update = $conn->prepare('UPDATE chemical_reagents SET unit = ? WHERE r_id = ?');
+        $update->execute(array($newQty, $id));
+        $updaterow = $update->rowCount();
+
+        if ($updaterow > 0) {
+            $h_desc = 'Added ' . $reagent_unitqty . ' to reagent ' . $fetch['r_name'] . ' (previous: ' . $currentQty . ')';
+            $history = $conn->prepare('INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) VALUES(?,?,?,?,?)');
+            $history->execute(array($h_desc, $h_tbl, 'added qty', $sessionid, $sessiontype));
+
+            echo $currentQty . '|' . $newQty; // return old and new qty
+        }
+    } else {
+        echo "Error: Reagent not found.";
+    }
+}
+
+public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard)
 {
     global $conn;
     session_start();
@@ -282,9 +315,9 @@ public function add_reagent($r_name, $r_quantity, $r_date_received, $r_date_open
     $sessiontype = $_SESSION['admin_type'] ?? 'admin';
 
     $sql = $conn->prepare("INSERT INTO chemical_reagents 
-        (r_name, r_quantity, r_date_received, r_date_opened, r_expiration, r_storage, r_hazard)
-        VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $inserted = $sql->execute([$r_name, $r_quantity, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard]);
+        (r_name, r_quantity, unit, r_date_received, r_date_opened, r_expiration, r_storage, r_hazard)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $inserted = $sql->execute([$r_name, $r_quantity, $unit, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard]);
 
     if($inserted){
         // Log history
@@ -520,13 +553,14 @@ public function add_reagent($r_name, $r_quantity, $r_date_received, $r_date_open
 	case 'add_reagent';
     $r_name = trim($_POST['r_name']);
     $r_quantity = trim($_POST['r_quantity']);
+	$unit = trim($_POST['unit']);
     $r_date_received = $_POST['r_date_received'] ?? null;
     $r_date_opened = $_POST['r_date_opened'] ?? null;
     $r_expiration = $_POST['r_expiration'] ?? null;
     $r_storage = trim($_POST['r_storage']);
     $r_hazard = trim($_POST['r_hazard']);
 
-    $add_function->add_reagent($r_name, $r_quantity, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard);
+    $add_function->add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard);
     break;
 
 		case 'add_equipment';
@@ -567,6 +601,12 @@ public function add_reagent($r_name, $r_quantity, $r_date_received, $r_date_open
     	$id = trim($_POST['id']);
     	$reagent_qty = trim($_POST['reagent_qty']);
     	$add_function->add_reagentqty($id, $reagent_qty);
+    	break;
+
+		case 'add_reagentunitqty':
+    	$id = trim($_POST['id']);
+    	$reagent_unitqty = trim($_POST['reagent_unitqty']);
+    	$add_function->add_reagentunitqty($id, $reagent_unitqty);
     	break;
 
 		case 'add_borrower';

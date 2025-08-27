@@ -1736,3 +1736,65 @@ Array
 )
 
 
+[2025-08-27 10:16:44] display_equipment_all: 8 rows
+Array
+(
+    [0] => Array
+        (
+            [category] => AVR
+            [total_stock] => 15
+            [total_rawstock] => 32
+        )
+
+    [1] => Array
+        (
+            [category] => Keyboard
+            [total_stock] => 68
+            [total_rawstock] => 382
+        )
+
+    [2] => Array
+        (
+            [category] => Monitor
+            [total_stock] => 0
+            [total_rawstock] => 32
+        )
+
+    [3] => Array
+        (
+            [category] => Mouse
+            [total_stock] => 22
+            [total_rawstock] => 74
+        )
+
+    [4] => Array
+        (
+            [category] => Projector
+            [total_stock] => 18
+            [total_rawstock] => 92
+        )
+
+    [5] => Array
+        (
+            [category] => Remote
+            [total_stock] => 7
+            [total_rawstock] => 12
+        )
+
+    [6] => Array
+        (
+            [category] => Router
+            [total_stock] => 12
+            [total_rawstock] => 12
+        )
+
+    [7] => Array
+        (
+            [category] => TV
+            [total_stock] => 5
+            [total_rawstock] => 10
+        )
+
+)
+
+

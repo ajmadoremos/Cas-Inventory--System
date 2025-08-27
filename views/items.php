@@ -172,6 +172,7 @@
 										<tr>
 											<th>Name of Reagent</th>
 											<th>Quantity</th>
+											<th>Quantity (ml)</th>
 											<th>Date Received</th>
 											<th>Date Opened</th>
 											<th>Expiration Date</th>
@@ -330,6 +331,11 @@
                     <label>Quantity</label>
                     <input type="number" name="r_quantity" placeholder="Enter quantity" class="form-control" min="1" required>
                 </div>
+
+				<div class="form-group">
+    				<label>Quantity (ml)</label>
+    				<input type="number" name="unit" placeholder="Enter quantity" class="form-control" min="1" required>
+				</div>
 
                 <div class="form-group">
                     <label>Date Received</label>
