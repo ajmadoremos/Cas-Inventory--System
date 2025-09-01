@@ -236,6 +236,17 @@ public function display_reagents()
     $data = ["data" => []];
 
     foreach ($fetch as $value) {
+        // compute status automatically
+        $today = date("Y-m-d");
+        $status = "Available";
+
+        if ($value['r_expiration'] < $today) {
+            $status = "Expired";
+        } elseif ($value['r_quantity'] <= 0) {
+            $status = "Out of Stock";
+        }
+
+        // action button
         $button = '<div class="btn-group">
                        <a href="reagent_info?r_id='.$value['r_id'].'&token=123" class="btn btn-primary">
                            <i class="fa fa-search"></i> More info
@@ -243,20 +254,23 @@ public function display_reagents()
                    </div>';
 
         $data['data'][] = [
-            "r_name"         => $value['r_name'],
-            "r_quantity"     => $value['r_quantity'],
-			"unit"           => $value['unit'],
-            "r_date_received"=> $value['r_date_received'],
-            "r_date_opened"  => $value['r_date_opened'],
-            "r_expiration"   => $value['r_expiration'],
-            "r_storage"      => $value['r_storage'],
-            "r_hazard"       => $value['r_hazard'],
-            "r_id"           => $button // action button goes here
+            "r_name"          => $value['r_name'],
+            "r_quantity"      => $value['r_quantity'],
+            "unit"            => $value['unit'],
+            "r_date_received" => $value['r_date_received'],
+            "r_date_opened"   => $value['r_date_opened'],
+            "r_expiration"    => $value['r_expiration'],
+            "r_storage"       => $value['r_storage'],
+            "r_hazard"        => $value['r_hazard'],
+            "r_status"        => $status,  // 👈 automatic status
+            "action"          => $button   // 👈 new action column
         ];
     }
 
     echo json_encode($data);
 }
+
+
 
 
 
@@ -402,6 +416,61 @@ public function display_reagents()
     header('Content-Type: application/json');
     echo json_encode($data);
     exit;
+}
+public function display_reagent_available()
+{
+    global $conn;
+
+    // Select all reagents that are available
+    $sql = $conn->prepare('SELECT * FROM reagent WHERE r_status = ?');
+    $sql->execute(array('Available'));
+    $count = $sql->rowCount();
+    $fetch = $sql->fetchAll();
+
+    if($count > 0){
+        foreach ($fetch as $key => $value) {
+            $data['data'][] = array(
+                $value['r_name'],          // Reagent name
+                $value['r_quantity'],      // Quantity
+                $value['unit'],            // Unit (e.g. ml)
+                $value['r_date_received'], // Date received
+                $value['r_expiration']     // Expiration date
+            );
+        }
+        echo json_encode($data);
+    } else {
+        $data['data'] = array();
+        echo json_encode($data);
+    }
+}
+public function display_reagent_expired()
+{
+    global $conn;
+
+    // Select all reagents that are expired
+    $sql = $conn->prepare('SELECT * FROM reagent WHERE r_status = ?');
+    $sql->execute(array('Expired'));
+    $count = $sql->rowCount();
+    $fetch = $sql->fetchAll();
+
+    if($count > 0){
+        foreach ($fetch as $key => $value) {
+            $data['data'][] = array(
+                $value['r_name'],          // Reagent name
+                $value['r_quantity'],      // Quantity
+                $value['unit'],            // Unit (e.g., ml)
+                $value['r_date_received'], // Date received
+                $value['r_date_opened'],   // Date opened
+                $value['r_expiration'],    // Expiration date
+                $value['r_storage'],       // Storage location
+                $value['r_hazard']         // Hazard information
+            );
+        }
+        echo json_encode($data);
+    } else {
+        $data['data'] = array();
+        echo json_encode($data);
+    }
 }
 
 

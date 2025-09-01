@@ -21,8 +21,7 @@
 					<span data-toggle="collapse" href="#sub-item-1"><svg class="glyph stroked chevron-down"><use xlink:href="#stroked-chevron-down"></use></svg></span> Transaction 
 				</a>
 				<ul class="children collapse" id="sub-item-1">
-					
-<li>
+					<li>
 						<a class="" href="reservation">
 							<svg class="glyph stroked eye">
 								<use xlink:href="#stroked-eye"/>
@@ -30,8 +29,6 @@
 							Reservations
 						</a>
 					</li>
-
-
 					<li>
 						<a class="" href="new">
 							<svg class="glyph stroked plus sign">
@@ -91,7 +88,6 @@
 					Inventory
 				</a>
 			</li>
-			
 			<li>
 				<a href="user">
 					<svg class="glyph stroked female user">
@@ -107,9 +103,7 @@
 		</ul>
 	</div><!--/.sidebar-->
 
-
 	<div class="main">
-		
 		<div class="row">
 			<ol class="breadcrumb">
 				<li><a href="dashboard"><svg class="glyph stroked home"><use xlink:href="#stroked-home"></use></svg></a></li>
@@ -119,27 +113,22 @@
 				<div class="row">
 					<div class="col-md-12">
 						<ul class="nav nav-pills">
-							<li class="active"><a href="#new" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;New</a></li>
-							<li><a href="#old" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;Old</a></li>
-							<li><a href="#lost" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;Lost</a></li>
-							<li><a href="#damaged" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;Damaged</a></li>
-							<li><a href="#pulledout" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;Total Items</a></li>
-							<li><a href="#transferred" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;Transferred</a></li>
-							<li><a href="#report2" data-toggle="tab"><i class=""></i>&nbsp;&nbsp;Borrowed</a></li>
+							<li class="active"><a href="#new" data-toggle="tab">New</a></li>
+							<li><a href="#old" data-toggle="tab">Old</a></li>
+							<li><a href="#lost" data-toggle="tab">Lost</a></li>
+							<li><a href="#damaged" data-toggle="tab">Damaged</a></li>
+							<li><a href="#pulledout" data-toggle="tab">Total Items</a></li>
+							<li><a href="#transferred" data-toggle="tab">Transferred</a></li>
+							<li><a href="#report2" data-toggle="tab">Borrowed</a></li>
+							
+							<!-- 🔹 New Tabs for Chemical Reagents -->
+							<li><a href="#reagents_available" data-toggle="tab">Reagents (Available)</a></li>
+							<li><a href="#reagents_expired" data-toggle="tab">Reagents (Expired)</a></li>
 						</ul>
 					</div>
-					<!-- <div class="col-md-2">
-						<button class="btn btn-primary add_equipment ">
-							<svg class="glyph stroked plus sign">
-								<use xlink:href="#stroked-plus-sign"/>
-							</svg> &nbsp;
-							Add Equipment
-						</button>
-					</div> -->
 				</div>
 			</div>
 		</div><!--/.row-->
-
 
 		<div class="row">
 			<div class="col-lg-12">
@@ -310,22 +299,49 @@
 													<th>Items</th>
 													<th>Borrowed Date</th>
 													<th>Returned Date</th>
-													
 												</tr>
 											</thead>
 										</table>
 									</div>
 								</div>
 							</div>
+
+							<!-- Reagents Available -->
+<div class="tab-pane fade" id="reagents_available">
+    <table class="table table_reagents_available">
+        <thead>
+            <tr>
+                <th>Chemical Name</th>
+                <th>Quantity</th>
+                <th>Unit (ml)</th>
+                <th>Expiration Date</th> 
+                <th>Status</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+<!-- Reagents Expired -->
+<div class="tab-pane fade" id="reagents_expired">
+    <table class="table table_reagents_expired">
+        <thead>
+            <tr>
+                <th>Chemical Name</th>
+                <th>Quantity</th>
+                <th>Unit (ml)</th>
+                <th>Expiration Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+
 						</div>
 					</div>
 				</div><!-- panel -->
 			</div><!-- panel -->
 		</div><!-- row -->
-
-
 	</div>
-
-
 
 <?php include 'footer.php'; ?>

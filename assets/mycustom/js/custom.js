@@ -246,6 +246,7 @@ function reagent_info(reagentId){
                 $('.r_expiration').text(reagent.r_expiration);
                 $('.r_storage').text(reagent.r_storage);
                 $('.r_hazard').text(reagent.r_hazard);
+                $('.r_status').text(reagent.r_status);
 
                 // If r_status exists, add a color-coded badge
                 if(reagent.r_status){

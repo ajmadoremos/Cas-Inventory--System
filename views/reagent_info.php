@@ -166,6 +166,10 @@
 									<td class="col-sm-6">Hazard Information</td>
 									<td class="r_hazard"></td>
 								</tr>
+								<tr>
+									<td class="col-sm-6">Status</td>
+									<td class="r_status"></td>
+								</tr>
 							</tbody>
 						</table>
 					</div>

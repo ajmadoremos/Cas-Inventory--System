@@ -172,17 +172,19 @@
 										<tr>
 											<th>Name of Reagent</th>
 											<th>Quantity</th>
-											<th>Quantity (ml)</th>
+											<th>Quantity(ml)</th>
 											<th>Date Received</th>
 											<th>Date Opened</th>
 											<th>Expiration Date</th>
 											<th>Storage Location</th>
 											<th>Hazard Information</th>
+											<th>Status</th> <!-- ✅ Added -->
 											<th>Action</th>
 										</tr>
 									</thead>
 								</table>
 							</div>
+
 						</div>
 
 					</div>

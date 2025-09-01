@@ -506,8 +506,8 @@ $('.equipment-forminfo').html(append);
 
 });
 
-$('.reagent-change').click(function(){
-    $('.reagent-info').toggle(effect, options, duration);
+$(document).on('click', '.reagent-change', function(){
+    $('.reagent-info').toggle(); // simple toggle
 
     var id = getReagentId();
 
@@ -544,42 +544,45 @@ $('.reagent-change').click(function(){
     `;
 
     $('.reagent-forminfo').html(formHtml);
+});
 
-    // Enable quantity only after status selected
-    $('select[name="change_status"]').on('change', function(){
-        if($(this).val() !== ""){
-            $('input[name="r_quantity"]').prop('disabled', false);
-            $('input[name="r_quantity"]').attr("placeholder", 
-                $(this).val() == "1" ? "Enter number available" : "Enter number expired"
-            );
-        } else {
-            $('input[name="r_quantity"]').prop('disabled', true).val('');
+// Enable quantity only after status selected
+$(document).on('change', 'select[name="change_status"]', function(){
+    var qtyInput = $('input[name="r_quantity"]');
+    if($(this).val() !== ""){
+        qtyInput.prop('disabled', false);
+        qtyInput.attr("placeholder", $(this).val() == "1" ? "Enter number available" : "Enter number expired");
+    } else {
+        qtyInput.prop('disabled', true).val('');
+    }
+});
+
+// Handle form submit
+$(document).on('submit', '.frm_rchangeitem', function(e){
+    e.preventDefault();
+    var formData = $(this).serialize();
+
+    $.ajax({
+        type: "POST",
+        data: formData,
+        url: "../class/edit/edit",
+        success: function(data){
+            console.log(data);
+            $('.reagent-info').toggle();
+            toastr.success("Status updated successfully!");
+            setTimeout(() => location.reload(), 1500);
+        },
+        error: function(err){
+            console.log(err);
+            toastr.error("Something went wrong!");
         }
     });
-
-    // Handle form submit
-    $('.frm_rchangeitem').submit(function(e){
-        e.preventDefault();
-        var formData = $(this).serialize();
-
-        $.ajax({
-            type: "POST",
-            data: formData,
-            url: "../class/edit/edit"
-        })
-        .done(function(data){
-            console.log(data);
-            $('.reagent-info').toggle(effect, options, duration);
-            toastr.success(data);
-
-            setTimeout(function(){
-                window.location.reload();
-            }, 2000);
-        });
-    });
 });
- 
 
+// Cancel button
+$(document).on('click', '.cancel-reagentinfo', function(){
+    $('.reagent-info').toggle();
+});
 
 
 tbl_borrow.on('click', 'button', function(e){
