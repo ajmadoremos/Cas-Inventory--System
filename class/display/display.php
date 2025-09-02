@@ -398,17 +398,29 @@ public function display_reagents()
 
     $data = [];
 
-    if(!empty($fetch)){
+    if (!empty($fetch)) {
         foreach ($fetch as $value) {
+            // ✅ compute status
+            $today = strtotime(date("Y-m-d"));
+            $expiration = !empty($value['r_expiration']) ? strtotime($value['r_expiration']) : null;
+
+            if ($expiration !== null && $expiration < $today) {
+                $status = "Expired";
+            } else {
+                $status = "Available";
+            }
+
             $data[] = [
                 'r_name'          => ucwords($value['r_name']),
                 'r_quantity'      => $value['r_quantity'],
-                'unit'            => $value['unit'], // ✅ added unit
-                'r_date_received' => !empty($value['r_date_received']) ? date('F d, Y', strtotime($value['r_date_received'])) : '',
-                'r_date_opened'   => !empty($value['r_date_opened']) ? date('F d, Y', strtotime($value['r_date_opened'])) : '',
-                'r_expiration'    => !empty($value['r_expiration']) ? date('F d, Y', strtotime($value['r_expiration'])) : '',
+                'unit'            => $value['unit'], 
+                // ✅ Keep raw YYYY-MM-DD for inputs
+                'r_date_received' => $value['r_date_received'],
+                'r_date_opened'   => $value['r_date_opened'],
+                'r_expiration'    => $value['r_expiration'],
                 'r_storage'       => ucwords($value['r_storage']),
-                'r_hazard'        => $value['r_hazard']
+                'r_hazard'        => $value['r_hazard'],
+                'r_status'        => $status
             ];
         }
     }
@@ -417,61 +429,62 @@ public function display_reagents()
     echo json_encode($data);
     exit;
 }
-public function display_reagent_available()
+
+
+public function display_reagents_available()
 {
     global $conn;
 
-    // Select all reagents that are available
-    $sql = $conn->prepare('SELECT * FROM reagent WHERE r_status = ?');
-    $sql->execute(array('Available'));
-    $count = $sql->rowCount();
+    // Select all reagents where expiration date is in the future
+    $sql = $conn->prepare('SELECT * FROM chemical_reagents WHERE r_expiration >= CURDATE()');
+    $sql->execute();
     $fetch = $sql->fetchAll();
+    $data = [];
 
-    if($count > 0){
-        foreach ($fetch as $key => $value) {
+    if(count($fetch) > 0){
+        foreach ($fetch as $value) {
             $data['data'][] = array(
-                $value['r_name'],          // Reagent name
-                $value['r_quantity'],      // Quantity
-                $value['unit'],            // Unit (e.g. ml)
-                $value['r_date_received'], // Date received
-                $value['r_expiration']     // Expiration date
+                $value['r_name'],
+                $value['r_quantity'],
+                $value['unit'],
+				$value['r_date_received'],
+                $value['r_expiration']
             );
         }
-        echo json_encode($data);
     } else {
         $data['data'] = array();
-        echo json_encode($data);
     }
+
+    echo json_encode($data);
 }
-public function display_reagent_expired()
+
+public function display_reagents_expired()
 {
     global $conn;
 
-    // Select all reagents that are expired
-    $sql = $conn->prepare('SELECT * FROM reagent WHERE r_status = ?');
-    $sql->execute(array('Expired'));
-    $count = $sql->rowCount();
+    // Select all reagents where expiration date is in the past
+    $sql = $conn->prepare('SELECT * FROM chemical_reagents WHERE r_expiration < CURDATE()');
+    $sql->execute();
     $fetch = $sql->fetchAll();
+    $data = [];
 
-    if($count > 0){
-        foreach ($fetch as $key => $value) {
+    if(count($fetch) > 0){
+        foreach ($fetch as $value) {
             $data['data'][] = array(
-                $value['r_name'],          // Reagent name
-                $value['r_quantity'],      // Quantity
-                $value['unit'],            // Unit (e.g., ml)
-                $value['r_date_received'], // Date received
-                $value['r_date_opened'],   // Date opened
-                $value['r_expiration'],    // Expiration date
-                $value['r_storage'],       // Storage location
-                $value['r_hazard']         // Hazard information
+                $value['r_name'],
+                $value['r_quantity'],
+                $value['unit'],
+				$value['r_date_received'],
+                $value['r_expiration'],
             );
         }
-        echo json_encode($data);
     } else {
         $data['data'] = array();
-        echo json_encode($data);
     }
+
+    echo json_encode($data);
 }
+
 
 
 
@@ -1596,6 +1609,14 @@ $display = new display();
 		$display->display_reagents();
 		break;
 
+		case 'display_reagents_available';
+		$display->display_reagents_available();
+		break;
+
+		case 'display_reagents_expired';
+		$display->display_reagents_expired();
+		break;
+		
 		case 'display_roominfo';
 		$id = $_POST['id'];
 		$name = $_POST['name'];

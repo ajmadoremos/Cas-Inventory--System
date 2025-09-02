@@ -491,6 +491,113 @@ var table_reagent = $('.table_reagent').DataTable({
         }
     ]
 });
+// Available Reagents Table
+var table_reagents_available = $('.table_reagents_available').DataTable({
+    "ajax": {
+        "url": "../class/display/display",
+        "type": "POST",
+        "data": { "key": "display_reagents_available" }
+    },
+    "columns": [
+        { "data": [0], "className": "text-center" }, // Chemical Name
+        { "data": [1], "className": "text-center" }, // Quantity
+        { "data": [2], "className": "text-center" }, // Unit
+        { "data": [4], "className": "text-center" }, // Expiration Date
+        { 
+            "data": null,
+            "className": "text-center",
+            "render": function(data, type, row){ return "Available"; }
+        }
+    ],
+    dom: "Bfrtip",
+    buttons: [
+        {
+            extend: "copy",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "csv",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "excel",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "pdfHtml5",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "print",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] },
+            message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+                      <h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
+                      <h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6></center>',
+            customize: function (win){
+                $(win.document.body).find('table').append('<br><br><br><br><h4 class="">Noted by:</h4><br><br><br><br><br><h4 class="">Prepared by:</h4>');
+            }
+        }
+    ]
+});
+
+// Expired Reagents Table
+var table_reagents_expired = $('.table_reagents_expired').DataTable({
+    "ajax": {
+        "url": "../class/display/display",
+        "type": "POST",
+        "data": { "key": "display_reagents_expired" }
+    },
+    "columns": [
+        { "data": [0], "className": "text-center" }, // Chemical Name
+        { "data": [1], "className": "text-center" }, // Quantity
+        { "data": [2], "className": "text-center" }, // Unit
+        { "data": [4], "className": "text-center" }, // Expiration Date
+        { 
+            "data": null,
+            "className": "text-center",
+            "render": function(data, type, row){ return "Expired"; }
+        }
+    ],
+    dom: "Bfrtip",
+    buttons: [
+        {
+            extend: "copy",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "csv",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "excel",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "pdfHtml5",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] }
+        },
+        {
+            extend: "print",
+            className: "btn-sm btn-success",
+            exportOptions:{ columns: [0,1,2,3,4] },
+            message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+                      <h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
+                      <h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6></center>',
+            customize: function (win){
+                $(win.document.body).find('table').append('<br><br><br><br><h4 class="">Noted by:</h4><br><br><br><br><br><h4 class="">Prepared by:</h4>');
+            }
+        }
+    ]
+});
 
 var table_inventory_new = $('.table_inventory_new').DataTable({
 		"ajax":

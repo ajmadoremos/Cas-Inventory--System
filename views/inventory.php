@@ -307,36 +307,34 @@
 							</div>
 
 							<!-- Reagents Available -->
-<div class="tab-pane fade" id="reagents_available">
-    <table class="table table_reagents_available">
-        <thead>
-            <tr>
-                <th>Chemical Name</th>
-                <th>Quantity</th>
-                <th>Unit (ml)</th>
-                <th>Expiration Date</th> 
-                <th>Status</th>
-            </tr>
-        </thead>
-    </table>
-</div>
+							<div class="tab-pane fade" id="reagents_available">
+    							<table class="table table_reagents_available">
+        							<thead>
+            							<tr>
+                							<th>Chemical Name</th>
+                							<th>Quantity</th>
+                							<th>Unit (ml)</th>
+                							<th>Expiration Date</th> 
+                							<th>Status</th>
+            							</tr>
+        							</thead>
+    							</table>
+							</div>
 
-<!-- Reagents Expired -->
-<div class="tab-pane fade" id="reagents_expired">
-    <table class="table table_reagents_expired">
-        <thead>
-            <tr>
-                <th>Chemical Name</th>
-                <th>Quantity</th>
-                <th>Unit (ml)</th>
-                <th>Expiration Date</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-    </table>
-</div>
-
-
+							<!-- Reagents Expired -->
+							<div class="tab-pane fade" id="reagents_expired">
+    							<table class="table table_reagents_expired">
+        							<thead>
+            							<tr>
+               								<th>Chemical Name</th>
+                							<th>Quantity</th>
+                							<th>Unit (ml)</th>
+                							<th>Expiration Date</th>
+                							<th>Status</th>
+            							</tr>
+        							</thead>
+    							</table>
+							</div>
 						</div>
 					</div>
 				</div><!-- panel -->

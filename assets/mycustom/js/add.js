@@ -423,7 +423,7 @@ $('.reagent-add').click(function(){
 
     // cancel button
     $('.cancel-reagentinfo').click(function(){
-        $('.reagent-info').toggle(effect, options, duration);
+        $('.reagent_info').toggle(effect, options, duration);
     });
 
     // submit handler
