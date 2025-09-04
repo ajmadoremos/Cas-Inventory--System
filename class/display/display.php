@@ -743,6 +743,36 @@ public function display_reagents_expired()
 				echo 0;
 			}
 		}
+public function display_chemical_borrow()
+{
+    global $conn;
+    $sql = $conn->prepare('SELECT * 
+                           FROM chemical_reagents
+                           WHERE r_quantity > ?  
+                           ORDER BY r_status ASC');
+    $sql->execute(array(0));
+    $row = $sql->rowCount();
+    $fetch = $sql->fetchAll();
+
+    if ($row > 0) {
+        foreach ($fetch as $key => $value) {
+            $data[] = array(
+                'id'        => $value['r_id'],
+                'name'      => ucwords($value['r_name']),
+                'quantity'  => $value['r_quantity'] . ' ' . $value['unit'],
+                'storage'   => $value['r_storage'],
+                'hazard'    => $value['r_hazard'],
+                'status'    => $value['r_status'], // already has values Available | Out of Stock | Expired
+                'date_received' => $value['r_date_received'],
+                'date_opened'   => $value['r_date_opened'],
+                'expiration'    => $value['r_expiration']
+            );
+        }
+        echo json_encode($data);
+    } else {
+        echo 0;
+    }
+}
 
 		public function display_borrow()
 {
@@ -1667,6 +1697,14 @@ $display = new display();
 
 		case 'display_item_borrow';
 		$display->display_item_borrow();
+		break;
+
+		case 'display_item_borrow';
+		$display->display_item_borrow();
+		break;
+
+		case 'display_chemical_borrow';
+		$display->display_chemical_borrow();
 		break;
 
 		case 'display_borrow';

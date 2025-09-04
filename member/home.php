@@ -55,6 +55,14 @@ date_default_timezone_set('Asia/Manila');
 										</div>
 									</div>
 									<div class="form-group">
+    									<label class="col-md-3 control-label" for="chemicals">Chemicals (maximum of 5)</label>
+    									<div class="col-md-9">
+        									<select class="form-control input-lg borrowchemical" name="borrow_chemical[]" multiple="multiple" style="width: 100%">
+            									<option></option>
+        									</select>
+    									</div>
+									</div>
+									<div class="form-group">
 										<label class="col-md-3 control-label" for="email">Date </label>
 										<div class="col-md-9">
 											<input type="text" class="form-control datepicker" name="reserved_date" required="required">

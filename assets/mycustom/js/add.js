@@ -482,35 +482,40 @@ $('.reagent-add').click(function(){
 
 
 $('.frm_borrow').submit(function(e){
-	e.preventDefault();
-	var data = $(this).serialize()+'&key=add_borrower';
-	$.ajax({
-		type: "POST",
-		url: "../class/add/add",
-		data: data,
-		dataType: 'json'
-	})
-	.done(function(data){
-		
-		if(data.response == 1)
-		{
-			toastr.success(data.message);
-			$(".borrowitem").select2('val', 'All');
-			$("select[name='borrow_membername']").select2('val', 'All');
-			$.get('../views/printBorrow?borrowIds=' + data.borrowIds, function(htmlData){
-	            var w = window.open();
-	            w.document.write(htmlData);
-	            w.setTimeout(function(){
-	                w.print();  
-	                w.close();
-	            },250);
-	        });
-		}
-		else
-		{
-			toastr.error(data.message);
-		}
-	});
+    e.preventDefault();
+    var data = $(this).serialize()+'&key=add_borrower';
+
+    $.ajax({
+        type: "POST",
+        url: "../class/add/add",
+        data: data,
+        dataType: 'json'
+    })
+    .done(function(data){
+        if(data.response == 1)
+        {
+            toastr.success(data.message);
+
+            // reset selects after success
+            $(".borrowitem").val(null).trigger('change');      // reset equipment
+            $(".borrowchemical").val(null).trigger('change'); // reset chemicals
+            $("select[name='borrow_membername']").val(null).trigger('change'); // reset borrower name
+
+            // print slip
+            $.get('../views/printBorrow?borrowIds=' + data.borrowIds, function(htmlData){
+                var w = window.open();
+                w.document.write(htmlData);
+                w.setTimeout(function(){
+                    w.print();  
+                    w.close();
+                },250);
+            });
+        }
+        else
+        {
+            toastr.error(data.message);
+        }
+    });
 });
 
 
@@ -540,37 +545,44 @@ $('.frmadd_users').submit(function(e){
 });
 
 $('.client_reservation').submit(function(e){
-	e.preventDefault();
-	var frmdata = $(this).serialize()+'&key=addclient_reservation';
+    e.preventDefault();
 
-	$.ajax({
-		type: "POST",
-		url: "../class/add/add",
-		data: frmdata
-	})
-	.done(function(data){
-		console.log(data);
-		if(data == 1){
-			toastr.success('Successful. Check your reservation status if your reservation was accomodated');
-			$('input[name="reserved_date"]').val('');
-			$('input[name="reserved_time"]').val('');
-			$('select[name="reserve_room"]').val('');
-			$(".client_reservation").find('select').select2('val', 'All');
-			tbl_pendingres.ajax.reload(null,false);
+    // Make sure all select2 values are included
+    $('.borrowitem, .borrowchemical').each(function(){
+        $(this).val($(this).val() || []).trigger('change');
+    });
 
-		}else if(data == 2){
-			toastr.warning('Your reservation cannot process. You can only make one reservation per day.');
-			$('input[name="reserved_date"]').val('');
-			$('input[name="reserved_time"]').val('');
-			$('select[name="reserve_room"]').val('');
-			$(".client_reservation").find('select').select2('val', 'All');
-			tbl_pendingres.ajax.reload(null,false);
-		}else{
-			toastr.error('Your reservation cannot process right now.');
-		}
-	});
+    var frmdata = $(this).serialize() + '&key=addclient_reservation';
 
+    $.ajax({
+        type: "POST",
+        url: "../class/add/add",
+        data: frmdata
+    })
+    .done(function(data){
+        console.log(data);
+
+        // Reset form fields
+        $('input[name="reserved_date"], input[name="reserved_time"], select[name="reserve_room"]').val('');
+        $('.borrowitem, .borrowchemical').val(null).trigger('change');
+
+        if(data == 1){
+            toastr.success('Successful. Check your reservation status if your reservation was accomodated');
+            tbl_pendingres.ajax.reload(null,false);
+        }else if(data == 2){
+            toastr.warning('Your reservation cannot process. You can only make one reservation per day.');
+            tbl_pendingres.ajax.reload(null,false);
+        }else if(data == 3){
+            toastr.error('Invalid client.');
+        }else{
+            toastr.error('Your reservation cannot process right now.');
+        }
+    })
+    .fail(function(err){
+        console.log('Error:', err.statusText);
+    });
 });
+
 
 $('.add_student').click(function () {
   $('.divedit-member').toggle(effect, options, duration);

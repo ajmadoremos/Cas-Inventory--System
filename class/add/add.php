@@ -333,48 +333,71 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
 
 
 
-		public function add_borrower($name,$item,$id,$reserve_room,$timeLimit)
-		{
-			
-			global $conn;
+		public function add_borrower($name,$item,$chemical,$id,$reserve_room,$timeLimit)
+{
+    global $conn;
 
-			session_start();
-			$h_desc = 'create borrow transaction';
-			$h_tbl = 'borrow';
-			$sessionid = $_SESSION['admin_id'];
-			$sessiontype = $_SESSION['admin_type'];
+    session_start();
+    $h_desc = 'create borrow transaction';
+    $h_tbl = 'borrow';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
 
-			$code = date('mdYHis').''.$id;
+    $code = date('mdYHis').''.$id;
 
-			$select = $conn->prepare('SELECT * FROM borrow WHERE member_id = ? AND status = ? GROUP BY borrowcode');
-			$select->execute(array($name,1));
-			$row = $select->rowCount();
-			if($row == 3)
-			{
-				echo json_encode(array("response" => 0, "message" => 'Enable to process your transaction. Please return first your borrowed items'));
-			}
-			else
-			{
-				$borrowIds = array();
+    $select = $conn->prepare('SELECT * FROM borrow WHERE member_id = ? AND status = ? GROUP BY borrowcode');
+    $select->execute(array($name,1));
+    $row = $select->rowCount();
+    if($row == 3)
+    {
+        echo json_encode(array("response" => 0, "message" => 'Unable to process your transaction. Please return first your borrowed items/chemicals'));
+    }
+    else
+    {
+        $borrowIds = array();
 
-				foreach ($item as $key => $items)
-				{
-					$itemsArr = explode("||",$items);
-					$sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,item_id,stock_id,user_id,room_assigned,time_limit) VALUES(?,?,?,?,?,?,?)');
-					$sql->execute(array($code,$name,$itemsArr[0],$itemsArr[1],$id,$reserve_room,$timeLimit));
-					$count = $sql->rowCount();
-					$borrowIds[] = $conn->lastInsertId();
+        /** -------------------------
+         *  Process Equipment Items
+         * ------------------------- */
+        if(!empty($item)){
+            foreach ($item as $key => $items)
+            {
+                $itemsArr = explode("||",$items);
+                $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,item_id,stock_id,user_id,room_assigned,time_limit) 
+                                       VALUES(?,?,?,?,?,?,?)');
+                $sql->execute(array($code,$name,$itemsArr[0],$itemsArr[1],$id,$reserve_room,$timeLimit));
+                $count = $sql->rowCount();
+                $borrowIds[] = $conn->lastInsertId();
 
-						if($count > 0){
-							$update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
-							$update->execute(array(1,$itemsArr[1]));
-							$row = $update->rowCount();
-						}
-				}
+                if($count > 0){
+                    $update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
+                    $update->execute(array(1,$itemsArr[1]));
+                }
+            }
+        }
 
-				echo json_encode(array("response" => 1, "message" => "Successfully Borrowed", "borrowIds" => implode("|",$borrowIds)));
-			}			
-		}
+        /** -------------------------
+         *  Process Chemicals
+         * ------------------------- */
+        if(!empty($chemical)){
+            foreach ($chemical as $key => $chemId)
+            {
+                $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,chemical_id,user_id,room_assigned,time_limit) 
+                                       VALUES(?,?,?,?,?,?)');
+                $sql->execute(array($code,$name,$chemId,$id,$reserve_room,$timeLimit));
+                $count = $sql->rowCount();
+                $borrowIds[] = $conn->lastInsertId();
+
+                if($count > 0){
+                    $update = $conn->prepare('UPDATE chemical_reagents SET r_quantity = (r_quantity - ?) WHERE r_id = ?');
+                    $update->execute(array(1,$chemId));
+                }
+            }
+        }
+
+        echo json_encode(array("response" => 1, "message" => "Successfully Borrowed", "borrowIds" => implode("|",$borrowIds)));
+    }           
+}
 
 		public function add_users($u_fname,$u_username,$u_password,$u_type)
 		{
@@ -405,33 +428,54 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
 		}
 
 
-		public function addclient_reservation($items,$date,$time,$client_id,$assign_room,$timeLimit)
-		{
-			global $conn;
-			$code = date('mdYhis').''.$client_id;
-			
-			// $sql = $conn->prepare('SELECT * FROM reservation WHERE reservation_code = ?');
-			// $sql->execute(array($code));
-			// $row = $sql->rowCount();
-			// if($row > 0){
-			// 	echo '2';
-			// }else{
-				if($client_id == 0){
-					echo '3';
-				}else{
-					foreach ($items as $key => $items) {
-						$itemsArr = explode("||",$items);
-						$sql1 = $conn->prepare('INSERT INTO reservation(reservation_code,member_id,item_id,stock_id,reserve_date,reservation_time,assign_room,time_limit) VALUES(?,?,?,?,?,?,?,?)');
-						$sql1->execute(array($code,$client_id,$itemsArr[0],$itemsArr[1],$date,$time,$assign_room,$timeLimit));
-						$count = $sql1->rowCount();
-					}
-						echo ($count > 0) ? '1' : '0';
-				}
-			// }
-			// foreach ($items as $key => $value) {
-				
-			// }
-		}
+		public function addclient_reservation($items, $chemicals, $date, $time, $client_id, $assign_room, $timeLimit)
+{
+    global $conn;
+    $code = date('mdYhis') . $client_id;
+
+    if($client_id == 0){
+        echo '3'; // invalid client
+        return;
+    }
+
+    $count = 0;
+
+    // -----------------------------
+    // Process equipment items
+    // -----------------------------
+    if(!empty($items)){
+        foreach ($items as $key => $item) {
+            $itemsArr = explode("||", $item);
+            $sql1 = $conn->prepare('INSERT INTO reservation(reservation_code, member_id, item_id, stock_id, reserve_date, reservation_time, assign_room, time_limit) VALUES(?,?,?,?,?,?,?,?)');
+            $sql1->execute(array($code, $client_id, $itemsArr[0], $itemsArr[1], $date, $time, $assign_room, $timeLimit));
+            if($sql1->rowCount() > 0){
+                $count++;
+                // decrease stock
+                $update = $conn->prepare('UPDATE item_stock SET items_stock = items_stock - ? WHERE id = ?');
+                $update->execute(array(1, $itemsArr[1]));
+            }
+        }
+    }
+
+    // -----------------------------
+    // Process chemicals
+    // -----------------------------
+    if(!empty($chemicals)){
+        foreach ($chemicals as $key => $chemId) {
+            $sql2 = $conn->prepare('INSERT INTO reservation(reservation_code, member_id, chemical_id, reserve_date, reservation_time, assign_room, time_limit) VALUES(?,?,?,?,?,?,?)');
+            $sql2->execute(array($code, $client_id, $chemId, $date, $time, $assign_room, $timeLimit));
+            if($sql2->rowCount() > 0){
+                $count++;
+                // decrease chemical quantity
+                $updateChem = $conn->prepare('UPDATE chemical_reagents SET r_quantity = r_quantity - ? WHERE r_id = ?');
+                $updateChem->execute(array(1, $chemId));
+            }
+        }
+    }
+
+    echo ($count > 0) ? '1' : '0';
+}
+
 
 		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section)
 {
@@ -610,13 +654,16 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
     	break;
 
 		case 'add_borrower';
-		$name = $_POST['borrow_membername'];
-		$item = $_POST['borrowitem'];
-		$id = $_POST['user_id'];
-		$reserve_room = $_POST['reserve_room'];
-		$timeLimit = $_POST['expected_time_of_return'];
-		$add_function->add_borrower($name,$item,$id,$reserve_room,$timeLimit);
-		break;
+    $name         = $_POST['borrow_membername'];
+    $item         = isset($_POST['borrowitem']) ? $_POST['borrowitem'] : array();
+    $chemical     = isset($_POST['borrowchemical']) ? $_POST['borrowchemical'] : array();
+    $id           = $_POST['user_id'];
+    $reserve_room = $_POST['reserve_room'];
+    $timeLimit    = $_POST['expected_time_of_return'];
+
+    $add_function->add_borrower($name, $item, $chemical, $id, $reserve_room, $timeLimit);
+    break;
+
 
 		case 'add_users';
 		$u_fname = trim($_POST['u_fname']);
@@ -627,14 +674,17 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
 		break;
 
 		case 'addclient_reservation';
-		$items = $_POST['reserve_item'];
-		$date = $_POST['reserved_date'];
-		$time = $_POST['reserved_time'];
-		$client_id = $_POST['client_id'];
-		$assign_room = $_POST['reserve_room'];
-		$timeLimit = $_POST['time_limit'];
-		$add_function->addclient_reservation($items,$date,$time,$client_id,$assign_room,$timeLimit);
-		break;
+    $items       = isset($_POST['reserve_item']) ? $_POST['reserve_item'] : array();
+    $chemicals   = isset($_POST['borrow_chemical']) ? $_POST['borrow_chemical'] : array();
+    $date        = $_POST['reserved_date'];
+    $time        = $_POST['reserved_time'];
+    $client_id   = $_POST['client_id'];
+    $assign_room = $_POST['reserve_room'];
+    $timeLimit   = $_POST['time_limit'];
+
+    $add_function->addclient_reservation($items, $chemicals, $date, $time, $client_id, $assign_room, $timeLimit);
+    break;
+
 
 		case 'add_newstudent';
 		$sid_number = trim($_POST['sid_number']);

@@ -174,7 +174,49 @@ $.ajax({
 .fail(function(data){
     console.log(data.statusText);
 });
+$.ajax({
+    type: "POST",
+    url: "../class/display/display",
+    data: { key: "display_chemical_borrow" },
+    success: function(data){
+        if(data != ''){ // data exists
+            var ndata = JSON.parse(data); // parse JSON
 
+            var select = "";
+            $.each(ndata, function(i, x){
+                select += "<option value='"+x.id+"'>"
+                            + x.name + " - "
+                            + x.quantity + " - "
+                            + x.storage + " - "
+                            + x.hazard + " - ["+ x.status +"]"
+                            + "</option>";
+            });
+
+            // Destroy previous Select2 instance if exists
+            if ($('.borrowchemical').hasClass("select2-hidden-accessible")) {
+                $('.borrowchemical').select2('destroy');
+            }
+
+            // Fill select and initialize Select2
+            $('.borrowchemical').html(select).select2({
+                placeholder: "Select chemical to borrow",
+                maximumSelectionLength: 5,
+                tokenSeparators: [',', ' ']
+            });
+
+        } else { // no data
+            if ($('.borrowchemical').hasClass("select2-hidden-accessible")) {
+                $('.borrowchemical').select2('destroy');
+            }
+            $('.borrowchemical').html('').select2({
+                placeholder: "No chemicals available"
+            });
+        }
+    },
+    error: function(xhr, status, error){
+        console.log("Chemical AJAX error:", xhr.responseText);
+    }
+});
 
 //borrow transaction
 $.ajax({
