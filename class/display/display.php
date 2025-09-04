@@ -431,61 +431,65 @@ public function display_reagents()
 }
 
 
-public function display_reagents_available()
-{
+public function display_reagents_available() {
     global $conn;
 
-    // Select all reagents where expiration date is in the future
-    $sql = $conn->prepare('SELECT * FROM chemical_reagents WHERE r_expiration >= CURDATE()');
+    // Update expired reagents first
+    $conn->prepare("
+        UPDATE chemical_reagents 
+        SET r_status = 'Expired' 
+        WHERE r_expiration < CURDATE() 
+          AND r_status != 'Expired'
+    ")->execute();
+
+    // Fetch available reagents
+    $sql = $conn->prepare("SELECT * FROM chemical_reagents WHERE r_status = 'Available'");
     $sql->execute();
     $fetch = $sql->fetchAll();
-    $data = [];
 
-    if(count($fetch) > 0){
-        foreach ($fetch as $value) {
-            $data['data'][] = array(
-                $value['r_name'],
-                $value['r_quantity'],
-                $value['unit'],
-				$value['r_date_received'],
-                $value['r_expiration']
-            );
-        }
-    } else {
-        $data['data'] = array();
+    $data = ['data' => []];
+    foreach ($fetch as $value) {
+        $data['data'][] = [
+            $value['r_name'],
+            $value['r_quantity'],
+            $value['unit'],
+            $value['r_date_received'],
+            $value['r_expiration']
+        ];
     }
 
     echo json_encode($data);
 }
 
-public function display_reagents_expired()
-{
+public function display_reagents_expired() {
     global $conn;
 
-    // Select all reagents where expiration date is in the past
-    $sql = $conn->prepare('SELECT * FROM chemical_reagents WHERE r_expiration < CURDATE()');
+    // Update expired reagents first
+    $conn->prepare("
+        UPDATE chemical_reagents 
+        SET r_status = 'Expired' 
+        WHERE r_expiration < CURDATE() 
+          AND r_status != 'Expired'
+    ")->execute();
+
+    // Fetch expired reagents
+    $sql = $conn->prepare("SELECT * FROM chemical_reagents WHERE r_status = 'Expired'");
     $sql->execute();
     $fetch = $sql->fetchAll();
-    $data = [];
 
-    if(count($fetch) > 0){
-        foreach ($fetch as $value) {
-            $data['data'][] = array(
-                $value['r_name'],
-                $value['r_quantity'],
-                $value['unit'],
-				$value['r_date_received'],
-                $value['r_expiration'],
-            );
-        }
-    } else {
-        $data['data'] = array();
+    $data = ['data' => []];
+    foreach ($fetch as $value) {
+        $data['data'][] = [
+            $value['r_name'],
+            $value['r_quantity'],
+            $value['unit'],
+            $value['r_date_received'],
+            $value['r_expiration']
+        ];
     }
 
     echo json_encode($data);
 }
-
-
 
 
 		public function display_equipmentinfo($id)
@@ -749,20 +753,21 @@ public function display_chemical_borrow()
     $sql = $conn->prepare('SELECT * 
                            FROM chemical_reagents
                            WHERE r_quantity > ?  
-                           ORDER BY r_status ASC');
-    $sql->execute(array(0));
+                           AND r_status = "Available"
+                           ORDER BY r_name ASC');
+    $sql->execute([0]);
     $row = $sql->rowCount();
     $fetch = $sql->fetchAll();
 
     if ($row > 0) {
-        foreach ($fetch as $key => $value) {
+        foreach ($fetch as $value) {
             $data[] = array(
                 'id'        => $value['r_id'],
                 'name'      => ucwords($value['r_name']),
                 'quantity'  => $value['r_quantity'] . ' ' . $value['unit'],
                 'storage'   => $value['r_storage'],
                 'hazard'    => $value['r_hazard'],
-                'status'    => $value['r_status'], // already has values Available | Out of Stock | Expired
+                'status'    => $value['r_status'], 
                 'date_received' => $value['r_date_received'],
                 'date_opened'   => $value['r_date_opened'],
                 'expiration'    => $value['r_expiration']
@@ -773,6 +778,8 @@ public function display_chemical_borrow()
         echo 0;
     }
 }
+
+
 
 		public function display_borrow()
 {
