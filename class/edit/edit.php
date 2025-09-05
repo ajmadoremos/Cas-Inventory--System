@@ -267,14 +267,37 @@
     $sessiontype = $_SESSION['admin_type'];
 
     try {
+        // Update reagent details
         $sql = $conn->prepare("UPDATE chemical_reagents 
             SET r_name = ?, r_date_received = ?, r_date_opened = ?, r_expiration = ?, r_storage = ?, r_hazard = ?
             WHERE r_id = ?");
         $sql->execute([$r_name, $r_date_received, $r_date_opened, $r_expiration, $r_storage, $r_hazard, $id]);
 
+        // 🔹 Recalculate status immediately
+        $today = date("Y-m-d");
+
+        // Expired
+        $stmt = $conn->prepare("UPDATE chemical_reagents 
+                                SET r_status = 'Expired' 
+                                WHERE r_expiration < ? AND r_id = ?");
+        $stmt->execute([$today, $id]);
+
+        // Out of Stock
+        $stmt = $conn->prepare("UPDATE chemical_reagents 
+                                SET r_status = 'Out of Stock' 
+                                WHERE r_quantity <= 0 AND r_id = ?");
+        $stmt->execute([$id]);
+
+        // Available
+        $stmt = $conn->prepare("UPDATE chemical_reagents 
+                                SET r_status = 'Available' 
+                                WHERE r_expiration >= ? AND r_quantity > 0 AND r_id = ?");
+        $stmt->execute([$today, $id]);
+
         // Log history
         $h_desc = "Updated reagent $r_name (ID: $id)";
-        $history = $conn->prepare("INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) VALUES(?,?,?,?,?)");
+        $history = $conn->prepare("INSERT INTO history_logs(description, table_name, status_name, user_id, user_type) 
+                                   VALUES(?,?,?,?,?)");
         $history->execute([$h_desc, $h_tbl, 'edit', $sessionid, $sessiontype]);
 
         echo "success";
@@ -282,6 +305,7 @@
         echo "error: " . $e->getMessage();
     }
 }
+
 
 
 

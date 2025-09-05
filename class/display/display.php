@@ -229,6 +229,32 @@ public function display_reagents()
 {
     global $conn;
 
+    // 🔹 Step 1: Update statuses in the database
+    $today = date("Y-m-d");
+
+    // Expired reagents
+    $conn->prepare("UPDATE chemical_reagents 
+                    SET r_status = 'Expired' 
+                    WHERE r_expiration < ? 
+                      AND r_status != 'Expired'")
+         ->execute([$today]);
+
+    // Out of Stock reagents
+    $conn->prepare("UPDATE chemical_reagents 
+                    SET r_status = 'Out of Stock' 
+                    WHERE r_quantity <= 0 
+                      AND r_status != 'Out of Stock'")
+         ->execute();
+
+    // Available reagents
+    $conn->prepare("UPDATE chemical_reagents 
+                    SET r_status = 'Available' 
+                    WHERE r_expiration >= ? 
+                      AND r_quantity > 0 
+                      AND r_status != 'Available'")
+         ->execute([$today]);
+
+    // 🔹 Step 2: Fetch updated data
     $sql = $conn->prepare("SELECT * FROM chemical_reagents ORDER BY r_name ASC");
     $sql->execute();
     $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
@@ -236,16 +262,6 @@ public function display_reagents()
     $data = ["data" => []];
 
     foreach ($fetch as $value) {
-        // compute status automatically
-        $today = date("Y-m-d");
-        $status = "Available";
-
-        if ($value['r_expiration'] < $today) {
-            $status = "Expired";
-        } elseif ($value['r_quantity'] <= 0) {
-            $status = "Out of Stock";
-        }
-
         // action button
         $button = '<div class="btn-group">
                        <a href="reagent_info?r_id='.$value['r_id'].'&token=123" class="btn btn-primary">
@@ -262,8 +278,8 @@ public function display_reagents()
             "r_expiration"    => $value['r_expiration'],
             "r_storage"       => $value['r_storage'],
             "r_hazard"        => $value['r_hazard'],
-            "r_status"        => $status,  // 👈 automatic status
-            "action"          => $button   // 👈 new action column
+            "r_status"        => $value['r_status'], // 👈 now from database
+            "action"          => $button
         ];
     }
 
