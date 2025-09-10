@@ -547,7 +547,17 @@ $('.frmadd_users').submit(function(e){
 $('.client_reservation').submit(function(e){
     e.preventDefault();
 
-    // Make sure all select2 values are included
+    // Get values from selects
+    var items = $('.borrowitem').val() || [];
+    var chemicals = $('.borrowchemical').val() || [];
+
+    // Validation: must select at least one
+    if(items.length === 0 && chemicals.length === 0){
+        toastr.warning('Please select at least one item or chemical.');
+        return;
+    }
+
+    // Make sure select2 values are serialized properly
     $('.borrowitem, .borrowchemical').each(function(){
         $(this).val($(this).val() || []).trigger('change');
     });
@@ -567,7 +577,7 @@ $('.client_reservation').submit(function(e){
         $('.borrowitem, .borrowchemical').val(null).trigger('change');
 
         if(data == 1){
-            toastr.success('Successful. Check your reservation status if your reservation was accomodated');
+            toastr.success('Successful. Check your reservation status if your reservation was accommodated.');
             tbl_pendingres.ajax.reload(null,false);
         }else if(data == 2){
             toastr.warning('Your reservation cannot process. You can only make one reservation per day.');

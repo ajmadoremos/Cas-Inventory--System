@@ -146,7 +146,7 @@
         }
     }
 
-    // ✅ Insert into item_stock if item added successfully
+    // ✅ Insert into item_stock if item added successfully 
     if ($row > 0) {
         $item = $conn->prepare('INSERT INTO item_stock (item_id, room_id, items_stock, item_status)
                                 VALUES(?,?,?,?)');
@@ -438,43 +438,70 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
         return;
     }
 
-    $count = 0;
+    try {
+        // Start transaction para safe
+        $conn->beginTransaction();
 
-    // -----------------------------
-    // Process equipment items
-    // -----------------------------
-    if(!empty($items)){
-        foreach ($items as $key => $item) {
-            $itemsArr = explode("||", $item);
-            $sql1 = $conn->prepare('INSERT INTO reservation(reservation_code, member_id, item_id, stock_id, reserve_date, reservation_time, assign_room, time_limit) VALUES(?,?,?,?,?,?,?,?)');
-            $sql1->execute(array($code, $client_id, $itemsArr[0], $itemsArr[1], $date, $time, $assign_room, $timeLimit));
-            if($sql1->rowCount() > 0){
-                $count++;
-                // decrease stock
-                $update = $conn->prepare('UPDATE item_stock SET items_stock = items_stock - ? WHERE id = ?');
-                $update->execute(array(1, $itemsArr[1]));
+        // Insert main reservation
+        $sql = $conn->prepare("INSERT INTO reservation 
+            (reservation_code, member_id, room_id, reserve_date, reservation_time, assign_room, time_limit) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $sql->execute([$code, $client_id, $assign_room, $date, $time, $assign_room, $timeLimit]);
+
+        // Get the reservation_id
+        $reservationId = $conn->lastInsertId();
+
+        $count = 0;
+
+        // -----------------------------
+        // Insert equipment items
+        // -----------------------------
+        if(!empty($items)){
+            foreach ($items as $key => $item) {
+                $itemsArr = explode("||", $item);
+
+                $sql1 = $conn->prepare("INSERT INTO reservation_items (reservation_id, item_id, stock_id) 
+                                        VALUES (?, ?, ?)");
+                $sql1->execute([$reservationId, $itemsArr[0], $itemsArr[1]]);
+
+                if($sql1->rowCount() > 0){
+                    $count++;
+                    // decrease stock
+                    $update = $conn->prepare("UPDATE item_stock SET items_stock = items_stock - 1 WHERE id = ?");
+                    $update->execute([$itemsArr[1]]);
+                }
             }
         }
-    }
 
-    // -----------------------------
-    // Process chemicals
-    // -----------------------------
-    if(!empty($chemicals)){
-        foreach ($chemicals as $key => $chemId) {
-            $sql2 = $conn->prepare('INSERT INTO reservation(reservation_code, member_id, chemical_id, reserve_date, reservation_time, assign_room, time_limit) VALUES(?,?,?,?,?,?,?)');
-            $sql2->execute(array($code, $client_id, $chemId, $date, $time, $assign_room, $timeLimit));
-            if($sql2->rowCount() > 0){
-                $count++;
-                // decrease chemical quantity
-                $updateChem = $conn->prepare('UPDATE chemical_reagents SET r_quantity = r_quantity - ? WHERE r_id = ?');
-                $updateChem->execute(array(1, $chemId));
+        // -----------------------------
+        // Insert chemicals
+        // -----------------------------
+        if(!empty($chemicals)){
+            foreach ($chemicals as $key => $chemId) {
+                $sql2 = $conn->prepare("INSERT INTO reservation_chemicals (reservation_id, chemical_id, quantity) 
+                                        VALUES (?, ?, ?)");
+                $sql2->execute([$reservationId, $chemId, 1]);
+
+                if($sql2->rowCount() > 0){
+                    $count++;
+                    // decrease chemical quantity
+                    $updateChem = $conn->prepare("UPDATE chemical_reagents SET r_quantity = r_quantity - 1 WHERE r_id = ?");
+                    $updateChem->execute([$chemId]);
+                }
             }
         }
-    }
 
-    echo ($count > 0) ? '1' : '0';
+        // Commit if everything is okay
+        $conn->commit();
+
+        echo ($count > 0) ? '1' : '0';
+
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        echo "error: " . $e->getMessage();
+    }
 }
+
 
 
 		public function add_newstudent($sid_number, $s_fname, $s_lname, $s_gender, $s_contact, $s_department, $s_year, $s_section)

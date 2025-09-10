@@ -49,7 +49,7 @@ date_default_timezone_set('Asia/Manila');
 									<div class="form-group">
 										<label class="col-md-3 control-label" for="name">Items (maximum of 5 items)</label>
 										<div class="col-md-9">
-											<select class="form-control input-lg borrowitem" name="reserve_item[]" multiple="multiple" required="required" style="width: 100%">
+											<select class="form-control input-lg borrowitem" name="reserve_item[]" multiple="multiple" style="width: 100%">
 												<option></option>
 											</select>
 										</div>

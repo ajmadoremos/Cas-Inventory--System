@@ -121,10 +121,6 @@
 					<i class="fa fa-edit"></i>
 					Edit Reagent
 				</button>
-				<button class="btn btn-primary reagent-change" type="button">
-					<i class="fa fa-arrows-alt"></i>
-					Change Status
-				</button>
 			</div>
 		</div><!--/.row-->
 
