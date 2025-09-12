@@ -805,7 +805,7 @@ public function display_chemical_borrow()
             b.borrowcode,
             b.date_borrow,
             b.member_id,
-            b.stock_id, -- keep this for return_item()
+            b.stock_id,
             m.m_fname, m.m_lname,
             ro.rm_name,
             rs.temp_approved_items
@@ -823,22 +823,21 @@ public function display_chemical_borrow()
     if ($count > 0) {
         foreach ($fetch as $value) {
 
-            $approved_items_display = "";
+            $items_list = [];
+            $chems_list = [];
 
-            // ✅ CASE 1: temp_approved_items exists (normal reservation flow)
+            // CASE 1: temp_approved_items exists
             if (!empty($value['temp_approved_items'])) {
                 $approved_items_arr = json_decode($value['temp_approved_items'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
-                    $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
+                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr)) {
                     foreach ($approved_items_arr as $item) {
-                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                        $items_list[] = htmlspecialchars($item);
                     }
-                    $approved_items_display .= "</ul>";
                 }
             }
 
-            // ✅ CASE 2: No temp_approved_items → get items directly from borrow + item
-            if (empty($approved_items_display)) {
+            // CASE 2: No temp_approved_items → get items directly from borrow + item
+            if (empty($items_list)) {
                 $stmtItems = $conn->prepare("
                     SELECT i.i_deviceID, i.i_category
                     FROM borrow b
@@ -847,19 +846,50 @@ public function display_chemical_borrow()
                 ");
                 $stmtItems->execute([$value['borrowcode']]);
                 $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
-
-                if (!empty($items)) {
-                    $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
-                    foreach ($items as $item) {
-                        $approved_items_display .= "<li>" . htmlspecialchars($item['i_deviceID'] . " - " . $item['i_category']) . "</li>";
-                    }
-                    $approved_items_display .= "</ul>";
-                } else {
-                    $approved_items_display = "<em>No approved items</em>";
+                foreach ($items as $item) {
+                    $items_list[] = htmlspecialchars($item['i_deviceID'] . " - " . $item['i_category']);
                 }
             }
 
-            // ✅ Keep borrowcode & member_id in button for return_item()
+            // CASE 3: Get chemicals
+            $stmtChem = $conn->prepare("
+                SELECT c.r_name, c.unit, bc.quantity
+                FROM borrow_chemicals bc
+                JOIN chemical_reagents c ON bc.chemical_id = c.r_id
+                JOIN borrow b ON bc.borrow_id = b.id
+                WHERE b.borrowcode = ?
+            ");
+            $stmtChem->execute([$value['borrowcode']]);
+            $chems = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($chems as $chem) {
+                $chems_list[] = htmlspecialchars($chem['r_name'] . " (" . $chem['quantity'] . " " . $chem['unit'] . ")");
+            }
+
+            // Final display
+            $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
+            
+            if (!empty($items_list)) {
+                $approved_items_display .= "<strong>Items:</strong>";
+                foreach ($items_list as $entry) {
+                    $approved_items_display .= "<li>" . $entry . "</li>";
+                }
+            }
+
+            if (!empty($chems_list)) {
+                $approved_items_display .= "<strong>Chemicals:</strong>";
+                foreach ($chems_list as $entry) {
+                    $approved_items_display .= "<li>" . $entry . "</li>";
+                }
+            }
+
+            if (empty($items_list) && empty($chems_list)) {
+                $approved_items_display .= "<em>No approved items</em>";
+            }
+
+            $approved_items_display .= "</ul>";
+
+            // Return button
             $button = "<button class='btn btn-primary' data-id='" . $value['member_id'] . "/" . $value['borrowcode'] . "'>
                             Return
                             <i class='fa fa-chevron-right'></i>
@@ -881,6 +911,7 @@ public function display_chemical_borrow()
         echo json_encode($data);
     }
 }
+
 
 
 		public function display_return()
@@ -973,97 +1004,142 @@ public function display_chemical_borrow()
 		
 	public function pending_reservation()
 {
-    global $conn; 
+    global $conn;
+
     $sql = $conn->prepare('
-        SELECT reservation.*, 
-               member.m_fname, member.m_lname, 
-               room.rm_name,
-               GROUP_CONCAT(DISTINCT CONCAT(item.i_deviceID, " - ", item.i_category) SEPARATOR "<br/>") AS item_borrow,
-               GROUP_CONCAT(DISTINCT CONCAT(chem.r_name, " (", chem.r_formula, ")") SEPARATOR "<br/>") AS chem_borrow
+        SELECT 
+            reservation.*, 
+            member.m_fname, 
+            member.m_lname, 
+            room.rm_name, 
+
+            -- Items (from reservation_items)
+            GROUP_CONCAT(
+                DISTINCT CONCAT(item.i_deviceID, " - ", item.i_category, " (", reservation_items.quantity, ")")
+                SEPARATOR "<br/>"
+            ) AS item_borrow,
+
+            -- Chemicals (from reservation_chemicals)
+            GROUP_CONCAT(
+                DISTINCT CONCAT(cr.r_name, " (", rc.quantity, " ", cr.unit, ")")
+                SEPARATOR "<br/>"
+            ) AS chemical_borrow
+
         FROM reservation
-        LEFT JOIN item_stock ON item_stock.id = reservation.stock_id
-        LEFT JOIN item ON item.id = item_stock.item_id
-        LEFT JOIN member ON member.id = reservation.member_id
-        LEFT JOIN room ON room.id = reservation.assign_room
-        LEFT JOIN reservation_chemicals rc ON rc.reservation_id = reservation.id
-        LEFT JOIN chemical_reagents chem ON chem.r_id = rc.chemical_id
-        WHERE reservation.status = ? 
-        GROUP BY reservation.reservation_code 
+        LEFT JOIN reservation_items 
+               ON reservation_items.reservation_id = reservation.id
+        LEFT JOIN item 
+               ON item.id = reservation_items.item_id
+        LEFT JOIN item_stock 
+               ON item_stock.id = reservation_items.stock_id
+
+        LEFT JOIN reservation_chemicals rc 
+               ON rc.reservation_id = reservation.id
+        LEFT JOIN chemical_reagents cr 
+               ON cr.r_id = rc.chemical_id
+
+        LEFT JOIN member 
+               ON member.id = reservation.member_id
+        LEFT JOIN room 
+               ON room.id = reservation.assign_room
+
+        WHERE reservation.status = ?
+        GROUP BY reservation.reservation_code
         ORDER BY reservation.reserve_date ASC
     ');
     $sql->execute([0]);
+
     $fetch = $sql->fetchAll();
     $count = $sql->rowCount();
 
     if ($count > 0) {
-        foreach ($fetch as $key => $value) {
+        foreach ($fetch as $value) {
             $reservation_code = $value['reservation_code'];
 
-            // ----------------------
-            // ITEM HTML
-            // ----------------------
+            // --- Items ---
             $items_raw = array_filter(explode("<br/>", $value['item_borrow']));
-            $itemHtml = "<ul class='item-list' data-id='$reservation_code'>";
-            foreach ($items_raw as $item) {
-                $item = trim($item);
-                if ($item !== "") {
-                    $itemHtml .= "
-                        <li>
-                            <label class='item-editable' style='display:none'>
-                                <input type='checkbox' class='item-checkbox' data-code='$reservation_code' checked value='$item'>
-                            </label>
-                            <span class='item-text'>$item</span>
-                        </li>";
+            $itemHtml = "";
+            if (!empty($items_raw)) {
+                $itemHtml .= "<strong>📦 Items:</strong><ul class='item-list' data-id='{$reservation_code}'>";
+                foreach ($items_raw as $item) {
+                    $item = trim($item);
+                    if ($item !== "") {
+                        $itemHtml .= "
+                            <li>
+                                <label class='item-editable' style='display:none'>
+                                    <input type='checkbox' 
+                                           class='item-checkbox' 
+                                           data-code='{$reservation_code}' 
+                                           checked 
+                                           value='{$item}'>
+                                </label>
+                                <span class='item-text'>{$item}</span>
+                            </li>";
+                    }
                 }
+                $itemHtml .= "</ul>";
             }
-            $itemHtml .= "</ul>";
 
-            // ----------------------
-            // CHEMICAL HTML (with checkboxes)
-            // ----------------------
-            $chems_raw = array_filter(explode("<br/>", $value['chem_borrow']));
-            $chemHtml = "<ul class='chem-list' data-id='$reservation_code'>";
-            foreach ($chems_raw as $chem) {
-                $chem = trim($chem);
-                if ($chem !== "") {
-                    $chemHtml .= "
-                        <li>
-                            <label class='item-editable' style='display:none'>
-                                <input type='checkbox' class='chem-checkbox' data-code='$reservation_code' checked value='$chem'>
-                            </label>
-                            <span class='chem-text'>$chem</span>
-                        </li>";
+            // --- Chemicals ---
+            $chemicals_raw = array_filter(explode("<br/>", $value['chemical_borrow']));
+            $chemicalHtml = "";
+            if (!empty($chemicals_raw)) {
+                $chemicalHtml .= "<strong>⚗️ Chemicals:</strong><ul class='chemical-list' data-id='{$reservation_code}'>";
+                foreach ($chemicals_raw as $chem) {
+                    $chem = trim($chem);
+                    if ($chem !== "") {
+                        $chemicalHtml .= "
+                            <li>
+                                <label class='item-editable' style='display:none'>
+                                    <input type='checkbox' 
+                                           class='item-checkbox' 
+                                           data-code='{$reservation_code}' 
+                                           checked 
+                                           value='{$chem}'>
+                                </label>
+                                <span class='item-text'>{$chem}</span>
+                            </li>";
+                    }
                 }
+                $chemicalHtml .= "</ul>";
             }
-            $chemHtml .= "</ul>";
+
+            // Combine Items + Chemicals
+            $borrowHtml = $itemHtml . $chemicalHtml;
 
             // Feedback textarea
             $feedbackBox = "
-                <textarea id='admin_feedback_$reservation_code' class='form-control feedback-box' data-id='$reservation_code' style='display:none' placeholder='Explain why some items are not approved'></textarea>
+                <textarea id='admin_feedback_{$reservation_code}' 
+                          class='form-control feedback-box' 
+                          data-id='{$reservation_code}' 
+                          style='display:none' 
+                          placeholder='Explain why some items/chemicals are not approved'></textarea>
             ";
 
             // Action buttons
             $buttons = "
-                <div class='btn-action-group' data-id='$reservation_code'>
-                    <button class='btn btn-warning btn-edit' data-id='$reservation_code'>Edit</button>
-                    <button class='btn btn-primary btn-accept' data-id='$reservation_code'>Accept</button>
-                    <button class='btn btn-danger btn-cancel' data-id='".$value['reservation_code']."'>
-                        Cancel
-                        <i class='fa fa-remove'></i>
+                <div class='btn-action-group' data-id='{$reservation_code}'>
+                    <button class='btn btn-warning btn-edit' data-id='{$reservation_code}'>Edit</button>
+                    <button class='btn btn-primary btn-accept' data-id='{$reservation_code}'>Accept</button>
+                    <button class='btn btn-danger btn-cancel' data-id='{$reservation_code}'>
+                        Cancel <i class='fa fa-remove'></i>
                     </button>
                 </div>
             ";
 
-            $date = date('F d, Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
+            // Reservation date
+            $date = date('F d, Y H:i:s A', strtotime($value['reserve_date'] . ' ' . $value['reservation_time']));
 
-            $data['data'][] = array(
-                $value['m_fname'].' '.$value['m_lname'],
-                $itemHtml . $chemHtml . $feedbackBox, // 👈 items + chemicals together
+            // Add row to DataTable response
+            $data['data'][] = [
+                $value['m_fname'] . ' ' . $value['m_lname'],
+                $borrowHtml . $feedbackBox, // ✅ Items + Chemicals in one box
                 $date,
                 ucwords($value['rm_name']),
                 $buttons
-            );
+            ];
         }
+
         echo json_encode($data);
     } else {
         echo json_encode(['data' => []]);
@@ -1071,14 +1147,11 @@ public function display_chemical_borrow()
 }
 
 
-
-
-
 		public function accept_reservation()
 {
     global $conn;
 
-    // Fetch all reservations that are accepted
+    // Fetch all accepted reservations but EXCLUDE borrowed (status = 3)
     $sql = $conn->prepare("
         SELECT 
             r.reservation_code,
@@ -1087,14 +1160,39 @@ public function display_chemical_borrow()
             r.reserve_date,
             r.reservation_time,
             rs.temp_approved_items,
-            GROUP_CONCAT(CONCAT(i.i_deviceID, ' - ', i.i_category) SEPARATOR '<br/>') AS item_borrow
+            rs.res_status,
+
+            -- Items
+            (
+                SELECT GROUP_CONCAT(
+                    DISTINCT CONCAT(i.i_deviceID, ' - ', i.i_category, ' (', ri.quantity, ')')
+                    SEPARATOR '<br/>'
+                )
+                FROM reservation_items ri
+                LEFT JOIN item i ON i.id = ri.item_id
+                WHERE ri.reservation_id = r.id
+            ) AS item_borrow,
+
+            -- Chemicals
+            (
+                SELECT GROUP_CONCAT(
+                    DISTINCT CONCAT(cr.r_name, ' (', rc.quantity, ' ', cr.unit, ')')
+                    SEPARATOR '<br/>'
+                )
+                FROM reservation_chemicals rc
+                LEFT JOIN chemical_reagents cr ON cr.r_id = rc.chemical_id
+                WHERE rc.reservation_id = r.id
+            ) AS chemical_borrow
+
         FROM reservation r
         LEFT JOIN member m ON m.id = r.member_id
         LEFT JOIN room ro ON ro.id = r.assign_room
-        LEFT JOIN item_stock ist ON ist.id = r.stock_id
-        LEFT JOIN item i ON i.id = ist.item_id
         LEFT JOIN reservation_status rs ON rs.reservation_code = r.reservation_code
-        WHERE r.status = 1
+
+        -- ✅ Only accepted, but not borrowed
+        WHERE (r.status = 1 OR rs.res_status = 1)
+          AND r.status != 3
+
         GROUP BY r.reservation_code
         ORDER BY r.reserve_date DESC, r.reservation_time DESC
     ");
@@ -1103,61 +1201,91 @@ public function display_chemical_borrow()
     $count = $sql->rowCount();
 
     if ($count > 0) {
-        foreach ($fetch as $key => $value) {
+        foreach ($fetch as $value) {
+            $approved_display = "";
 
-            $approved_items_display = "";
-
-            // ✅ If temp_approved_items exists, use it
             if (!empty($value['temp_approved_items'])) {
-                $approved_items_arr = json_decode($value['temp_approved_items'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
-                    $approved_items_display = "<ul>";
-                    foreach ($approved_items_arr as $item) {
-                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                // Already stored approved list
+                $approved_arr = json_decode($value['temp_approved_items'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_arr) && count($approved_arr) > 0) {
+                    // ✅ Render grouped JSON
+                    if (!empty($approved_arr['items'])) {
+                        $approved_display .= "<strong>📦 Items:</strong><ul>";
+                        foreach ($approved_arr['items'] as $item) {
+                            $approved_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                        }
+                        $approved_display .= "</ul>";
                     }
-                    $approved_items_display .= "</ul>";
+                    if (!empty($approved_arr['chemicals'])) {
+                        $approved_display .= "<strong>🧪 Chemicals:</strong><ul>";
+                        foreach ($approved_arr['chemicals'] as $chem) {
+                            $approved_display .= "<li>" . htmlspecialchars($chem) . "</li>";
+                        }
+                        $approved_display .= "</ul>";
+                    }
                 }
             }
 
-            // Fallback: if no temp_approved_items, use item_borrow from reservation
-if (empty($approved_items_display)) {
-    if (!empty($value['item_borrow'])) {
-        $all_items_arr = explode('<br/>', $value['item_borrow']);
-        $approved_items_display = "<ul>";
-        foreach ($all_items_arr as $item) {
-            $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
-        }
-        $approved_items_display .= "</ul>";
+            if (empty($approved_display)) {
+                $approved_display = "";
+                $combined = ["items" => [], "chemicals" => []];
 
-        // Only create reservation_status row if it does NOT exist
-        $stmtCheck = $conn->prepare("SELECT * FROM reservation_status WHERE reservation_code = ?");
-        $stmtCheck->execute([$value['reservation_code']]);
-        $statusRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+                // ✅ Items with 📦 header
+                if (!empty($value['item_borrow'])) {
+                    $approved_display .= "<strong>📦 Items:</strong><ul>";
+                    foreach (explode('<br/>', $value['item_borrow']) as $item) {
+                        $itemText = trim($item);
+                        $approved_display .= "<li>" . htmlspecialchars($itemText) . "</li>";
+                        $combined["items"][] = $itemText;
+                    }
+                    $approved_display .= "</ul>";
+                }
 
-        if (!$statusRow) {
-            $stmtInsert = $conn->prepare("
-                INSERT INTO reservation_status (reservation_code, temp_approved_items, res_status)
-                VALUES (?, ?, 1)
-            ");
-            $stmtInsert->execute([$value['reservation_code'], json_encode($all_items_arr)]);
-        }
-        // ✅ Do NOT update if reservation_status already exists
-    } else {
-        $approved_items_display = "<em>No approved items</em>";
-    }
-}
+                // ✅ Chemicals with 🧪 header
+                if (!empty($value['chemical_borrow'])) {
+                    $approved_display .= "<strong>🧪 Chemicals:</strong><ul>";
+                    foreach (explode('<br/>', $value['chemical_borrow']) as $chem) {
+                        $chemText = trim($chem);
+                        $approved_display .= "<li>" . htmlspecialchars($chemText) . "</li>";
+                        $combined["chemicals"][] = $chemText;
+                    }
+                    $approved_display .= "</ul>";
+                }
 
+                if (empty($approved_display)) {
+                    $approved_display = "<em>No approved items/chemicals</em>";
+                }
+
+                // ✅ Save grouped JSON {items:[], chemicals:[]}
+                $stmtCheck = $conn->prepare("SELECT * FROM reservation_status WHERE reservation_code = ?");
+                $stmtCheck->execute([$value['reservation_code']]);
+                $statusRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+                if (!$statusRow) {
+                    $stmtInsert = $conn->prepare("
+                        INSERT INTO reservation_status (reservation_code, temp_approved_items, res_status)
+                        VALUES (?, ?, 1)
+                    ");
+                    $stmtInsert->execute([$value['reservation_code'], json_encode($combined)]);
+                } else {
+                    $stmtUpdate = $conn->prepare("
+                        UPDATE reservation_status 
+                        SET temp_approved_items = ?, res_status = 1
+                        WHERE reservation_code = ?
+                    ");
+                    $stmtUpdate->execute([json_encode($combined), $value['reservation_code']]);
+                }
+            }
 
             $button = "<button class='btn btn-primary borrowreserve' data-id='" . htmlspecialchars($value['reservation_code']) . "'>
-                        Borrow
-                        <i class='fa fa-chevron-right'></i>
-                    </button>";
+                        Borrow <i class='fa fa-chevron-right'></i>
+                       </button>";
 
             $date = date('F d, Y h:i:s A', strtotime($value['reserve_date'] . ' ' . $value['reservation_time']));
 
             $data['data'][] = [
                 htmlspecialchars($value['m_fname'] . ' ' . $value['m_lname']),
-                $approved_items_display,
+                $approved_display,
                 $date,
                 htmlspecialchars(ucwords($value['rm_name'])),
                 $button
@@ -1169,6 +1297,10 @@ if (empty($approved_items_display)) {
         echo json_encode(['data' => []]);
     }
 }
+
+
+
+
 
 
 		public function tbluser_reservation()

@@ -531,41 +531,82 @@
 		}
 
 		public function borrowreserve($code)
-		{
-			global $conn;
+{
+    global $conn;
 
-			session_start();
-			$sessionid = $_SESSION['admin_id'];
+    session_start();
+    $sessionid = $_SESSION['admin_id'];
 
-			$up = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ? ');
-			$up->execute(array(3,$code));
-			$num = $up->rowCount();
-			if($num > 0){
-				$sql = $conn->prepare('SELECT * FROM reservation WHERE reservation_code = ?');
-				$sql->execute(array($code));
-				$fetch = $sql->fetchAll();
-					$borrowIds = array();
-					foreach ($fetch as $key => $value) {
-						$itemID = $value['item_id'];
-							$insert = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,item_id,stock_id,user_id,room_assigned,time_limit) VALUES(?,?,?,?,?,?,?)');
-							$insert->execute(array($code,$value['member_id'],$value['item_id'],$value['stock_id'],$sessionid,$value['assign_room'],$value['time_limit']));
-							$count = $insert->rowCount();
-							$borrowIds[] = $conn->lastInsertId();
-							if($count > 0){
-								$update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
-								$update->execute(array(1,$value['stock_id']));
-								$row = $update->rowCount();
-							}
+    // ✅ Mark reservation as borrowed
+    $up = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
+    $up->execute([3, $code]);
+    $num = $up->rowCount();
 
-					}
+    if ($num > 0) {
+        $sql = $conn->prepare('SELECT * FROM reservation WHERE reservation_code = ?');
+        $sql->execute([$code]);
+        $fetch = $sql->fetchAll();
 
-					echo json_encode(array("response" => 1, "message" => "Successfully Borrowed", "borrowIds" => implode("|",$borrowIds)));
-			}
-			else{
-				echo json_encode(array("response" => 0));
-			}
+        $borrowIds = [];
 
-		}
+        // 🔹 Handle Items
+        foreach ($fetch as $value) {
+            $insert = $conn->prepare('
+                INSERT INTO borrow (borrowcode, member_id, item_id, stock_id, user_id, room_assigned, time_limit)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ');
+            $insert->execute([
+                $code,
+                $value['member_id'],
+                $value['item_id'],
+                $value['stock_id'],
+                $sessionid,
+                $value['assign_room'],
+                $value['time_limit']
+            ]);
+
+            $borrowId = $conn->lastInsertId();
+            $borrowIds[] = $borrowId;
+
+            if ($borrowId) {
+                // Deduct from item stock
+                $update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
+                $update->execute([1, $value['stock_id']]);
+
+                // 🔹 Also check if this reservation has chemicals linked
+                $sqlChem = $conn->prepare("
+                    SELECT rc.chemical_id, rc.quantity
+                    FROM reservation_chemicals rc
+                    WHERE rc.reservation_id = ?
+                ");
+                $sqlChem->execute([$value['id']]);
+                $chemicals = $sqlChem->fetchAll();
+
+                foreach ($chemicals as $chem) {
+                    // Insert chemical borrow record
+                    $insertChem = $conn->prepare("
+                        INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity)
+                        VALUES (?, ?, ?)
+                    ");
+                    $insertChem->execute([$borrowId, $chem['chemical_id'], $chem['quantity']]);
+
+                    // Deduct chemical stock
+                    $updateChem = $conn->prepare("UPDATE chemical_reagents SET r_quantity = r_quantity - ? WHERE r_id = ?");
+                    $updateChem->execute([$chem['quantity'], $chem['chemical_id']]);
+                }
+            }
+        }
+
+        echo json_encode([
+            "response" => 1,
+            "message" => "Successfully Borrowed",
+            "borrowIds" => implode("|", $borrowIds)
+        ]);
+    } else {
+        echo json_encode(["response" => 0]);
+    }
+}
+
 
 		public function return_transfer($id,$qty_transfer)
 		{
@@ -713,54 +754,68 @@
 		case 'accept_reservation':
     $code = $_POST['code'];
 
-    // Get all items for this reservation
+    // Step 1: Mark reservation as accepted
+    $stmtUpdate = $conn->prepare("
+        UPDATE reservation
+        SET status = 1
+        WHERE reservation_code = ?
+    ");
+    $stmtUpdate->execute([$code]);
+
+    // Step 2A: Collect all approved items
     $stmtItems = $conn->prepare("
-        SELECT i.i_deviceID, i.i_category, r.item_id
-        FROM reservation r
-        JOIN item i ON r.item_id = i.id
-        WHERE r.reservation_code = ?
+        SELECT i.i_deviceID, i.i_category, ri.quantity
+        FROM reservation_items ri
+        JOIN item i ON ri.item_id = i.id
+        WHERE ri.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
     ");
     $stmtItems->execute([$code]);
     $allItemRows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
     $allItems = array_map(function($row) {
-        return $row['i_deviceID'] . " - " . $row['i_category'];
+        return $row['i_deviceID'] . " - " . $row['i_category'] . " (" . $row['quantity'] . ")";
     }, $allItemRows);
 
-    // Check if reservation_status row exists
-    $stmtCheck = $conn->prepare("SELECT temp_approved_items FROM reservation_status WHERE reservation_code = ?");
+    // Step 2B: Collect all approved chemicals
+    $stmtChem = $conn->prepare("
+        SELECT cr.r_name, cr.unit, rc.quantity
+        FROM reservation_chemicals rc
+        JOIN chemical_reagents cr ON rc.chemical_id = cr.r_id
+        WHERE rc.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
+    ");
+    $stmtChem->execute([$code]);
+    $allChemRows = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
+
+    $allChemicals = array_map(function($row) {
+        return $row['r_name'] . " (" . $row['quantity'] . " " . $row['unit'] . ")";
+    }, $allChemRows);
+
+    // Step 2C: Merge items + chemicals
+    $allApproved = array_merge($allItems, $allChemicals);
+
+    // Step 3: Insert/update reservation_status
+    $stmtCheck = $conn->prepare("SELECT * FROM reservation_status WHERE reservation_code = ?");
     $stmtCheck->execute([$code]);
     $statusRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
     if (!$statusRow) {
-        // No row → insert all items as approved
         $stmt = $conn->prepare("
             INSERT INTO reservation_status (reservation_code, temp_approved_items, res_status)
             VALUES (?, ?, 1)
         ");
-        $stmt->execute([$code, json_encode($allItems)]);
+        $stmt->execute([$code, json_encode($allApproved)]);
     } else {
-        // Row exists → keep existing temp_approved_items, just mark res_status = 1
         $stmt = $conn->prepare("
             UPDATE reservation_status
-            SET res_status = 1
+            SET temp_approved_items = ?, res_status = 1
             WHERE reservation_code = ?
         ");
-        $stmt->execute([$code]);
-    }
-
-    // Update reservation rows to mark approved
-    foreach ($allItemRows as $rowItem) {
-        $stmtUpdate = $conn->prepare("
-            UPDATE reservation
-            SET status = 1
-            WHERE reservation_code = ? AND item_id = ?
-        ");
-        $stmtUpdate->execute([$code, $rowItem['item_id']]);
+        $stmt->execute([json_encode($allApproved), $code]);
     }
 
     echo 1; // Success
     break;
+
 
 	
 		case 'save_reservation_items':

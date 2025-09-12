@@ -1389,83 +1389,89 @@ $("#btnReloadList").on('click', function(){
 });
 
 var tbl_pendingres = $('.tbl_pendingres').DataTable({
-		"ajax":
-			{
-				"url": "../class/display/display",
-				"type": "POST",
-				"data": {
-					"key": "pending_reservation"
+	"ajax": {
+		"url": "../class/display/display",
+		"type": "POST",
+		"data": {
+			"key": "pending_reservation"
+		}
+	},
+	"columns": [
+		{ // Borrower name
+			"data": [0],
+			"className": "text-center"
+		},
+		{ // Items + Chemicals (merged)
+			"data": [1],
+			"className": "text-left"
+		},
+		{ // Date
+			"data": [2],
+			"className": "text-center"
+		},
+		{ // Room
+			"data": [3],
+			"className": "text-center"
+		},
+		{ // Action buttons
+			"data": [4],
+			"className": "text-center"
+		}
+	],
+	"order": [[2, "asc"]], // order by reservation date by default
+
+	// ✅ Allow HTML for items + chemicals column
+	"columnDefs": [
+		{
+			"targets": 1, // Items + Chemicals column
+			"render": function (data, type, row) {
+				// Keep HTML in table display, strip tags when exporting
+				if (type === 'display' || type === 'filter') {
+					return data;
 				}
-			},
-		"columns": 
-		[
-			{
-				"data": [0],
-				"className": "text-center"
-			},
-			{
-				"data": [1],
-				"className": "text-center"
-			},
-			{
-				"data": [2],
-				"className": "text-center"
-			},
-			{
-				"data": [3],
-				"className": "text-center"
-			},
-			{
-				"data": [4],
-				"className": "text-center"
+				return data ? data.replace(/<[^>]+>/g, '') : '';
 			}
-		],
-		dom: "Bfrtip",
-		buttons: [
-			{
-				extend: "copy",
-				className: "btn-sm btn-success",
-				exportOptions:{
-					columns: [0,1,2,3]
-				}
-			},
-			{
-				extend: "csv",
-				className: "btn-sm btn-success",
-				exportOptions:{
-					columns: [0,1,2,3]
-				}
-			},
-			{
-				extend: "excel",
-				className: "btn-sm btn-success",
-				exportOptions:{
-					columns: [0,1,2,3]
-				}
-			},
-			{
-				extend: "pdfHtml5",
-				className: "btn-sm btn-success",
-				exportOptions:{
-					columns: [0,1,2,3]
-				}
-			},
-			{
+		}
+	],
+
+	dom: "Bfrtip",
+	buttons: [
+		{
+			extend: "copy",
+			className: "btn-sm btn-success",
+			exportOptions: { columns: [0,1,2,3] }
+		},
+		{
+			extend: "csv",
+			className: "btn-sm btn-success",
+			exportOptions: { columns: [0,1,2,3] }
+		},
+		{
+			extend: "excel",
+			className: "btn-sm btn-success",
+			exportOptions: { columns: [0,1,2,3] }
+		},
+		{
+			extend: "pdfHtml5",
+			className: "btn-sm btn-success",
+			exportOptions: { columns: [0,1,2,3] }
+		},
+		{
 			extend: "print",
-				className: "btn-sm btn-success",
-				exportOptions:{
-					columns: [0,1,2,3]
-				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
-							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
-							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
-							</center>',
-				customize: function ( win ) {
-					$(win.document.body).find( 'table' ).append('<br<br/><br><br><br><h4 class="">Noted by:</h4><br><br><br><br><br><h4 class="">Prepared by:</h4>');
-				}
+			className: "btn-sm btn-success",
+			exportOptions: { columns: [0,1,2,3] },
+			message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+						<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
+						<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
+						</center>',
+			customize: function (win) {
+				$(win.document.body).find('table').append('<br><br><br><br><br><h4 class="">Noted by:</h4><br><br><br><br><br><h4 class="">Prepared by:</h4>');
 			}
-		]
+		}
+	]
 });
+
+
 
 var tbl_reserved = $('.tbl_reserved').DataTable({
 		"ajax":
