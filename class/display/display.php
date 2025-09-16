@@ -997,12 +997,26 @@ public function display_chemical_borrow()
             $approved_items_display = "";
             if (!empty($value['temp_approved_items']) && trim($value['temp_approved_items']) !== "") {
                 $approved_items_arr = json_decode($value['temp_approved_items'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr) && count($approved_items_arr) > 0) {
-                    $approved_items_display = "<ul style='margin:0; padding-left:18px;'>";
-                    foreach ($approved_items_arr as $item) {
-                        $approved_items_display .= "<li>" . htmlspecialchars($item) . "</li>";
+                if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr)) {
+                    $approved_items_display = "<div style='margin:0; padding-left:5px;'>";
+
+                    if (!empty($approved_items_arr['items'])) {
+                        $approved_items_display .= "<div><strong>📦 Items:</strong><ul style='margin:0; padding-left:18px;'>";
+                        foreach ($approved_items_arr['items'] as $item) {
+                            $approved_items_display .= "<li>" . htmlspecialchars($item, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</li>";
+                        }
+                        $approved_items_display .= "</ul></div>";
                     }
-                    $approved_items_display .= "</ul>";
+
+                    if (!empty($approved_items_arr['chemicals'])) {
+                        $approved_items_display .= "<div><strong>🧪 Chemicals:</strong><ul style='margin:0; padding-left:18px;'>";
+                        foreach ($approved_items_arr['chemicals'] as $chem) {
+                            $approved_items_display .= "<li>" . htmlspecialchars($chem, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</li>";
+                        }
+                        $approved_items_display .= "</ul></div>";
+                    }
+
+                    $approved_items_display .= "</div>";
                 }
             }
 
