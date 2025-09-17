@@ -133,11 +133,17 @@ include 'header.php';
 								</div>
 								<div class="form-group">
 									<label class="">Select Items (maximum of 5 items)</label>
-									<select class="form-control input-lg borrowitem" name="borrowitem[]" multiple="multiple" required="required">
+									<select class="form-control input-lg borrowitem" name="borrowitem[]" multiple="multiple">
 										<option></option>
 									</select>
 									<input type="hidden" name="user_id" value="<?php echo $_SESSION['admin_id']; ?>">
 								</div>
+								<div class="form-group">
+    									<label class="">Chemicals (maximum of 5)</label>
+        								<select class="form-control input-lg borrowchemical" name="borrowchemical[]" multiple="multiple" style="width: 100%">
+            								<option></option>
+        								</select>
+									</div>
 								<div class="form-group">
 									<label>Select Room</label>
 									<select class="form-control" name="reserve_room" required></select>

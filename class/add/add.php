@@ -367,7 +367,8 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
                                        VALUES(?,?,?,?,?,?,?)');
                 $sql->execute(array($code,$name,$itemsArr[0],$itemsArr[1],$id,$reserve_room,$timeLimit));
                 $count = $sql->rowCount();
-                $borrowIds[] = $conn->lastInsertId();
+                $borrowId = $conn->lastInsertId();
+                $borrowIds[] = $borrowId;
 
                 if($count > 0){
                     $update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
@@ -380,18 +381,27 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
          *  Process Chemicals
          * ------------------------- */
         if(!empty($chemical)){
-            foreach ($chemical as $key => $chemId)
-            {
-                $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,chemical_id,user_id,room_assigned,time_limit) 
-                                       VALUES(?,?,?,?,?,?)');
-                $sql->execute(array($code,$name,$chemId,$id,$reserve_room,$timeLimit));
-                $count = $sql->rowCount();
-                $borrowIds[] = $conn->lastInsertId();
+            // First create a borrow record (for this borrow transaction)
+            $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,user_id,room_assigned,time_limit) 
+                                   VALUES(?,?,?,?,?)');
+            $sql->execute(array($code,$name,$id,$reserve_room,$timeLimit));
+            $borrowId = $conn->lastInsertId();
+            $borrowIds[] = $borrowId;
 
-                if($count > 0){
-                    $update = $conn->prepare('UPDATE chemical_reagents SET r_quantity = (r_quantity - ?) WHERE r_id = ?');
-                    $update->execute(array(1,$chemId));
-                }
+            foreach ($chemical as $key => $chemData)
+            {
+                // if format = "chemId||quantity", split it
+                $chemArr = explode("||",$chemData);
+                $chemId = $chemArr[0];
+                $qty    = isset($chemArr[1]) ? (int)$chemArr[1] : 1;
+
+                // Insert into borrow_chemicals
+                $sqlChem = $conn->prepare('INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity) VALUES(?,?,?)');
+                $sqlChem->execute(array($borrowId,$chemId,$qty));
+
+                // Update stock
+                $update = $conn->prepare('UPDATE chemical_reagents SET r_quantity = (r_quantity - ?) WHERE r_id = ?');
+                $update->execute(array($qty,$chemId));
             }
         }
 
