@@ -754,7 +754,7 @@
 		case 'accept_reservation':
     $code = $_POST['code'];
 
-    // Step 1: Mark reservation as accepted
+    // Step 1: Mark reservation as accepted in main table
     $stmtUpdate = $conn->prepare("
         UPDATE reservation
         SET status = 1
@@ -762,92 +762,114 @@
     ");
     $stmtUpdate->execute([$code]);
 
-    // Step 2A: Collect all approved items
-    $stmtItems = $conn->prepare("
-        SELECT i.i_deviceID, i.i_category, ri.quantity
-        FROM reservation_items ri
-        JOIN item i ON ri.item_id = i.id
-        WHERE ri.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
-    ");
-    $stmtItems->execute([$code]);
-    $allItemRows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+    // Step 2: Check if there are temp approved items
+    $stmtTemp = $conn->prepare("SELECT temp_approved_items FROM reservation_status WHERE reservation_code = ?");
+    $stmtTemp->execute([$code]);
+    $tempRow = $stmtTemp->fetch(PDO::FETCH_ASSOC);
 
-    $allItems = array_map(function($row) {
-        return $row['i_deviceID'] . " - " . $row['i_category'] . " (" . $row['quantity'] . ")";
-    }, $allItemRows);
-
-    // Step 2B: Collect all approved chemicals
-    $stmtChem = $conn->prepare("
-        SELECT cr.r_name, cr.unit, rc.quantity
-        FROM reservation_chemicals rc
-        JOIN chemical_reagents cr ON rc.chemical_id = cr.r_id
-        WHERE rc.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
-    ");
-    $stmtChem->execute([$code]);
-    $allChemRows = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
-
-    $allChemicals = array_map(function($row) {
-        return $row['r_name'] . " (" . $row['quantity'] . " " . $row['unit'] . ")";
-    }, $allChemRows);
-
-    // Step 2C: Merge items + chemicals
-    $allApproved = array_merge($allItems, $allChemicals);
-
-    // Step 3: Insert/update reservation_status
-    $stmtCheck = $conn->prepare("SELECT * FROM reservation_status WHERE reservation_code = ?");
-    $stmtCheck->execute([$code]);
-    $statusRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-
-    if (!$statusRow) {
-        $stmt = $conn->prepare("
-            INSERT INTO reservation_status (reservation_code, temp_approved_items, res_status)
-            VALUES (?, ?, 1)
-        ");
-        $stmt->execute([$code, json_encode($allApproved)]);
+    if ($tempRow && !empty($tempRow['temp_approved_items'])) {
+        // ✅ Use the saved items/chemicals
+        $finalApprovedJson = $tempRow['temp_approved_items'];
     } else {
-        $stmt = $conn->prepare("
-            UPDATE reservation_status
-            SET temp_approved_items = ?, res_status = 1
-            WHERE reservation_code = ?
+        // ❌ If no saved version → fallback to all original
+        // Items
+        $stmtItems = $conn->prepare("
+            SELECT i.i_deviceID, i.i_category, ri.quantity
+            FROM reservation_items ri
+            JOIN item i ON ri.item_id = i.id
+            WHERE ri.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
         ");
-        $stmt->execute([json_encode($allApproved), $code]);
+        $stmtItems->execute([$code]);
+        $allItemRows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+        $allItems = array_map(function($row) {
+            return $row['i_deviceID'] . " - " . $row['i_category'] . " (" . $row['quantity'] . ")";
+        }, $allItemRows);
+
+        // Chemicals
+        $stmtChem = $conn->prepare("
+            SELECT cr.r_name, cr.unit, rc.quantity
+            FROM reservation_chemicals rc
+            JOIN chemical_reagents cr ON rc.chemical_id = cr.r_id
+            WHERE rc.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
+        ");
+        $stmtChem->execute([$code]);
+        $allChemRows = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
+
+        $allChemicals = array_map(function($row) {
+            return $row['r_name'] . " (" . $row['quantity'] . " " . $row['unit'] . ")";
+        }, $allChemRows);
+
+        $finalApproved = [
+            "items" => $allItems,
+            "chemicals" => $allChemicals
+        ];
+        $finalApprovedJson = json_encode($finalApproved, JSON_UNESCAPED_UNICODE);
     }
 
-    echo 1; // Success
+    // Step 3: Update reservation_status with final accepted items
+    $stmtCheck = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
+    $stmtCheck->execute([$code]);
+
+    if ($stmtCheck->rowCount() > 0) {
+        $stmt = $conn->prepare("
+            UPDATE reservation_status
+            SET remark = ?, res_status = 1
+            WHERE reservation_code = ?
+        ");
+        $stmt->execute([$finalApprovedJson, $code]);
+    } else {
+        $stmt = $conn->prepare("
+            INSERT INTO reservation_status (reservation_code, remark, res_status)
+            VALUES (?, ?, 1)
+        ");
+        $stmt->execute([$code, $finalApprovedJson]);
+    }
+
+    echo 1; // success
     break;
+
+
 
 
 	
 		case 'save_reservation_items':
-        $code = $_POST['code'];
-        $approvedItems = json_decode($_POST['approved_items'], true);
-        $feedback = $_POST['admin_feedback'];
+    $code = $_POST['code'];
+    $approvedItems = json_decode($_POST['approved_items'], true); // grouped JSON {items:[], chemicals:[]}
+    $feedback = $_POST['admin_feedback'] ?? "";
 
-        // Check if row exists in reservation_status
-        $check = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
-        $check->execute([$code]);
+    // Ensure grouped structure (NO feedback inside JSON)
+    $finalData = [
+        "items" => $approvedItems['items'] ?? [],
+        "chemicals" => $approvedItems['chemicals'] ?? []
+    ];
 
-        if ($check->rowCount() > 0) {
-            // Update existing row
-            $stmt = $conn->prepare("
-                UPDATE reservation_status
-                SET temp_approved_items = ?, temp_feedback = ?
-                WHERE reservation_code = ?
-            ");
-            $stmt->execute([json_encode($approvedItems), $feedback, $code]);
-        } else {
-            // Insert new row
-            $stmt = $conn->prepare("
-                INSERT INTO reservation_status (reservation_code, temp_approved_items, temp_feedback, res_status)
-                VALUES (?, ?, ?, 0)
-            ");
-            $stmt->execute([$code, json_encode($approvedItems), $feedback]);
-        }
+    // Check if row exists
+    $check = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
+    $check->execute([$code]);
 
-        echo 1; // Always success
-        break;
+    if ($check->rowCount() > 0) {
+        // Update
+        $stmt = $conn->prepare("
+            UPDATE reservation_status
+            SET temp_approved_items = ?, temp_feedback = ?
+            WHERE reservation_code = ?
+        ");
+        $stmt->execute([json_encode($finalData), $feedback, $code]);
+    } else {
+        // Insert
+        $stmt = $conn->prepare("
+            INSERT INTO reservation_status (reservation_code, temp_approved_items, temp_feedback, res_status)
+            VALUES (?, ?, ?, 0)
+        ");
+        $stmt->execute([$code, json_encode($finalData), $feedback]);
+    }
+
+    echo 1;
+    break;
 
 
+ 
 
 
 		case 'cancel_reservation';

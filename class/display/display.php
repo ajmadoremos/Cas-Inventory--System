@@ -796,8 +796,7 @@ public function display_chemical_borrow()
 }
 
 
-
-		public function display_borrow()
+public function display_borrow()
 {
     global $conn; 
     $sql = $conn->prepare('
@@ -809,6 +808,7 @@ public function display_chemical_borrow()
             b.stock_id,
             m.m_fname, m.m_lname,
             ro.rm_name,
+            rs.remark,
             rs.temp_approved_items
         FROM borrow b
         LEFT JOIN member m ON m.id = b.member_id
@@ -838,9 +838,13 @@ public function display_chemical_borrow()
             ];
         }
 
-        // From reservation_status JSON
-        if (!empty($value['temp_approved_items'])) {
-            $approved_items_arr = json_decode($value['temp_approved_items'], true);
+        // ✅ Borrower flow (JSON data only)
+        $approved_items_json = !empty($value['remark']) 
+            ? $value['remark'] 
+            : $value['temp_approved_items'];
+
+        if (!empty($approved_items_json)) {
+            $approved_items_arr = json_decode($approved_items_json, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr)) {
                 if (!empty($approved_items_arr['items'])) {
                     foreach ($approved_items_arr['items'] as $item) {
@@ -853,47 +857,46 @@ public function display_chemical_borrow()
                     }
                 }
             }
-        }
+        } else {
+            // ⚠️ Admin flow (fallback to DB)
+            if (!empty($value['stock_id'])) {
+                $stmtItems = $conn->prepare("
+                    SELECT i.i_deviceID, i.i_category
+                    FROM item_stock ist
+                    JOIN item i ON i.id = ist.item_id
+                    WHERE ist.id = ?
+                ");
+                $stmtItems->execute([$value['stock_id']]);
+                $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
-        // From stock_id (items)
-        if (!empty($value['stock_id'])) {
-            $stmtItems = $conn->prepare("
-                SELECT i.i_deviceID, i.i_category
-                FROM item_stock ist
-                JOIN item i ON i.id = ist.item_id
-                WHERE ist.id = ?
+                if (empty($items)) {
+                    $stmtItems2 = $conn->prepare("SELECT i.i_deviceID, i.i_category FROM item i WHERE i.id = ?");
+                    $stmtItems2->execute([$value['stock_id']]);
+                    $items = $stmtItems2->fetchAll(PDO::FETCH_ASSOC);
+                }
+
+                foreach ($items as $item) {
+                    $dev = $item['i_deviceID'] ?? '';
+                    $cat = $item['i_category'] ?? '';
+                    $grouped[$code]['items'][] = htmlspecialchars(trim($dev . (($dev && $cat) ? ' - ' : '') . $cat), ENT_QUOTES, 'UTF-8');
+                }
+            }
+
+            $stmtChem = $conn->prepare("
+                SELECT c.r_name, c.unit, bc.quantity
+                FROM borrow_chemicals bc
+                JOIN chemical_reagents c ON bc.chemical_id = c.r_id
+                WHERE bc.borrow_id = ?
             ");
-            $stmtItems->execute([$value['stock_id']]);
-            $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+            $stmtChem->execute([$value['id']]);
+            $chems = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
 
-            if (empty($items)) {
-                $stmtItems2 = $conn->prepare("SELECT i.i_deviceID, i.i_category FROM item i WHERE i.id = ?");
-                $stmtItems2->execute([$value['stock_id']]);
-                $items = $stmtItems2->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($chems as $chem) {
+                $rname = $chem['r_name'] ?? '';
+                $qty   = $chem['quantity'] ?? '';
+                $unit  = $chem['unit'] ?? '';
+                $grouped[$code]['chems'][] = htmlspecialchars(trim("$rname ($qty $unit)"), ENT_QUOTES, 'UTF-8');
             }
-
-            foreach ($items as $item) {
-                $dev = $item['i_deviceID'] ?? '';
-                $cat = $item['i_category'] ?? '';
-                $grouped[$code]['items'][] = htmlspecialchars(trim($dev . (($dev && $cat) ? ' - ' : '') . $cat), ENT_QUOTES, 'UTF-8');
-            }
-        }
-
-        // From borrow_chemicals (chemicals)
-        $stmtChem = $conn->prepare("
-            SELECT c.r_name, c.unit, bc.quantity
-            FROM borrow_chemicals bc
-            JOIN chemical_reagents c ON bc.chemical_id = c.r_id
-            WHERE bc.borrow_id = ?
-        ");
-        $stmtChem->execute([$value['id']]);
-        $chems = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($chems as $chem) {
-            $rname = $chem['r_name'] ?? '';
-            $qty   = $chem['quantity'] ?? '';
-            $unit  = $chem['unit'] ?? '';
-            $grouped[$code]['chems'][] = htmlspecialchars(trim("$rname ($qty $unit)"), ENT_QUOTES, 'UTF-8');
         }
     }
 
@@ -941,6 +944,7 @@ public function display_chemical_borrow()
 
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
 }
+
 
 		public function display_return()
 {
@@ -1384,47 +1388,83 @@ public function display_chemical_borrow()
 }
 
 
-
-
-
-
 		public function tbluser_reservation()
-		{
-			global $conn;
-			session_start();
-			$session = $_SESSION['member_id'];
-			$sql = $conn->prepare('	SELECT *,reservation.status as stat, GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow FROM reservation
-								 	LEFT JOIN item_stock ON item_stock.id = reservation.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = reservation.member_id
-								 	LEFT JOIN room ON room.id = reservation.assign_room
-								 	LEFT JOIN reservation_status ON reservation_status.reservation_code = reservation.reservation_code
-								 	WHERE reservation.member_id = ? GROUP BY reservation.reservation_code');
-			$sql->execute(array($session));
-			$fetch = $sql->fetchAll();
-			$count = $sql->rowCount();
-			if($count > 0){
-				foreach ($fetch as $key => $value) {
+{
+    global $conn;
+    session_start();
+    $session = $_SESSION['member_id'];
 
-					if($value['stat'] == 0){
-						$status = 'Pending';
-					}else if($value['stat'] == 1){
-						$status = 'Accepted';
-					}else if($value['stat'] == 2){
-						$status = 'Cancelled';
-					}else {
-						$status = 'Borrowed';
-					}
-				
-				$date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
-					$data['data'][] = array($date,$value['item_borrow'],ucwords($value['rm_name']),$value['remark'],$status);
-				}
-				echo json_encode($data);
-			}else{
-				$data['data'] = array();
-				echo json_encode($data);
-			}
-		}
+    $sql = $conn->prepare('
+        SELECT *,
+               reservation.status as stat,
+               GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow
+        FROM reservation
+        LEFT JOIN item_stock ON item_stock.id = reservation.stock_id
+        LEFT JOIN item ON item.id = item_stock.item_id
+        LEFT JOIN member ON member.id = reservation.member_id
+        LEFT JOIN room ON room.id = reservation.assign_room
+        LEFT JOIN reservation_status ON reservation_status.reservation_code = reservation.reservation_code
+        WHERE reservation.member_id = ? 
+        GROUP BY reservation.reservation_code
+    ');
+    $sql->execute([$session]);
+    $fetch = $sql->fetchAll();
+    $count = $sql->rowCount();
+
+    if ($count > 0) {
+        foreach ($fetch as $value) {
+
+            // ✅ Map status
+            if ($value['stat'] == 0) {
+                $status = 'Pending';
+            } elseif ($value['stat'] == 1) {
+                $status = 'Accepted';
+            } elseif ($value['stat'] == 2) {
+                $status = 'Cancelled';
+            } else {
+                $status = 'Borrowed';
+            }
+
+            // ✅ Reservation date
+            $date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
+
+            // ✅ Build Items column
+            $itemsDisplay = $value['item_borrow']; // default from GROUP_CONCAT
+
+            if (!empty($value['remark'])) {
+                $decoded = json_decode($value['remark'], true);
+
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $itemsDisplay = "";
+
+                    if (!empty($decoded['items'])) {
+                        $itemsDisplay .= "<strong>📦 Items:</strong><br/>" . implode("<br/>", $decoded['items']) . "<br/>";
+                    }
+                    if (!empty($decoded['chemicals'])) {
+                        $itemsDisplay .= "<strong>⚗️ Chemicals:</strong><br/>" . implode("<br/>", $decoded['chemicals']);
+                    }
+
+                    // If still empty fallback to old data
+                    if (empty($itemsDisplay)) {
+                        $itemsDisplay = $value['item_borrow'];
+                    }
+                }
+            }
+
+            $data['data'][] = array(
+                $date,
+                $itemsDisplay,
+                ucwords($value['rm_name']),
+                $status,
+                $value['remark'] // keep raw remark as last column
+            );
+        }
+        echo json_encode($data);
+    } else {
+        $data['data'] = array();
+        echo json_encode($data);
+    }
+}
 
 		public function chart_borrow()
 		{

@@ -1034,174 +1034,202 @@ $('.frm_cancelreservation').submit(function(e){
 
 $(document).ready(function () {
     var originalContent = {};
-    window.savedItems = {};
+    window.savedItems = {};     // structured {items:[], chemicals:[]}
     window.savedFeedback = {};
-    window.allItems = {};  // ✅ Track all items for accurate feedback check
+    window.allItems = {};       // ✅ Track all items + chemicals
 
     // ✅ EDIT Button
     tbl_pendingres.on('click', '.btn-edit', function () {
         var id = $(this).data('id');
-        var listContainer = $('.item-list[data-id="' + id + '"]');
 
-        // Save original HTML
-        originalContent[id] = listContainer.html();
+        var itemListContainer = $('.item-list[data-id="' + id + '"]');
+        var chemicalListContainer = $('.chemical-list[data-id="' + id + '"]');
 
-        var items = listContainer.find('li');
+        // 🔹 Save original HTML
+        originalContent[id] = {
+            items: itemListContainer.html(),
+            chemicals: chemicalListContainer.html()
+        };
+
         var allItemsList = [];
-        var html = "<ul>";
 
-        items.each(function () {
-            var text = $(this).text().trim();
-            if (text) {
-                allItemsList.push(text);
-                html += `<li><label><input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked> ${text}</label></li>`;
-            }
-        });
+        // --- Items ---
+        var items = itemListContainer.find('li');
+        var itemHtml = "";
+        if (items.length > 0) {
+            itemHtml = "<strong>📦 Items:</strong><ul>";
+            items.each(function () {
+                var text = $(this).text().trim();
+                if (text) {
+                    allItemsList.push(text);
+                    itemHtml += `
+                        <li>
+                            <label>
+                                <input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked>
+                                ${text}
+                            </label>
+                        </li>`;
+                }
+            });
+            itemHtml += "</ul>";
+        }
+        itemListContainer.html(itemHtml);
 
-        window.allItems[id] = allItemsList;
+        // --- Chemicals ---
+        var chemicals = chemicalListContainer.find('li');
+        var chemicalHtml = "";
+        if (chemicals.length > 0) {
+            chemicalHtml = "<strong>⚗️ Chemicals:</strong><ul>";
+            chemicals.each(function () {
+                var text = $(this).text().trim();
+                if (text) {
+                    allItemsList.push(text);
+                    chemicalHtml += `
+                        <li>
+                            <label>
+                                <input type="checkbox" class="item-checkbox" data-code="${id}" value="${text}" checked>
+                                ${text}
+                            </label>
+                        </li>`;
+                }
+            });
+            chemicalHtml += "</ul>";
+        }
 
-        html += "</ul>";
-        html += `
+        // --- Feedback + Buttons ---
+        chemicalHtml += `
             <div class="form-group mt-2">
                 <label><strong>Admin Feedback (why not approved):</strong></label>
                 <textarea class="form-control admin-feedback" id="admin_feedback_${id}" rows="3" placeholder="Enter reason here..."></textarea>
             </div>
-            <div>
+            <div class="mt-2">
                 <button class='btn btn-warning btn-back' data-id="${id}">Back</button>
-                <button class='btn btn-warning btn-save' data-id="${id}">Save</button>
+                <button class='btn btn-success btn-save' data-id="${id}">Save</button>
             </div>
         `;
+        chemicalListContainer.html(chemicalHtml);
 
-        listContainer.html(html);
+        // Store all items + chemicals
+        window.allItems[id] = allItemsList;
 
-        $('.btn-edit[data-id="' + id + '"]').hide();
-        $('.btn-accept[data-id="' + id + '"]').hide();
-        $('.btn-cancel[data-id="' + id + '"]').hide();
+        // Hide action buttons
+        $(`.btn-edit[data-id="${id}"], .btn-accept[data-id="${id}"], .btn-cancel[data-id="${id}"]`).hide();
     });
 
     // ✅ BACK Button
     tbl_pendingres.on('click', '.btn-back', function () {
         var id = $(this).data('id');
-        var listContainer = $('.item-list[data-id="' + id + '"]');
+
+        var itemListContainer = $('.item-list[data-id="' + id + '"]');
+        var chemicalListContainer = $('.chemical-list[data-id="' + id + '"]');
 
         if (originalContent[id]) {
-            listContainer.html(originalContent[id]);
+            itemListContainer.html(originalContent[id].items);
+            chemicalListContainer.html(originalContent[id].chemicals);
         }
 
-        $('.btn-edit[data-id="' + id + '"]').show();
-        $('.btn-accept[data-id="' + id + '"]').show();
-        $('.btn-cancel[data-id="' + id + '"]').show();
+        // Show action buttons
+        $(`.btn-edit[data-id="${id}"], .btn-accept[data-id="${id}"], .btn-cancel[data-id="${id}"]`).show();
     });
 
-   // Declare globals once (put this somewhere in your script before handlers)
-window.allItems = window.allItems || {};
-window.savedItems = window.savedItems || {};
-window.savedFeedback = window.savedFeedback || {};
+    // ✅ SAVE Button
+    tbl_pendingres.on('click', '.btn-save', function () {
+        var id = $(this).data('id');
 
-// ✅ SAVE Button
-tbl_pendingres.on('click', '.btn-save', function () {
-    var id = $(this).data('id');
-    var listContainer = $('.item-list[data-id="' + id + '"]');
+        var checkedItems = [];
+        var checkedChemicals = [];
 
-    var checkedItems = [];
-    listContainer.find('.item-checkbox:checked').each(function () {
-        checkedItems.push($(this).val());
-    });
-
-    var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
-
-    // Store locally
-    window.savedItems[id] = checkedItems;
-    window.savedFeedback[id] = feedback;
-
-    // Store all items if not stored yet (store full item list)
-    if (!window.allItems[id]) {
-        var allCurrentItems = [];
-        listContainer.find('.item-checkbox').each(function () {
-            allCurrentItems.push($(this).val());
+        $('.item-list[data-id="' + id + '"] .item-checkbox:checked').each(function () {
+            checkedItems.push($(this).val());
         });
-        window.allItems[id] = allCurrentItems;
-    }
 
-    // Save directly to reservation table (pending)
-    $.ajax({
-        type: "POST",
-        url: "../class/edit/edit",
-        data: {
-            key: 'save_reservation_items',
-            code: id,
-            approved_items: JSON.stringify(checkedItems),
-            admin_feedback: feedback
-        },
-        success: function (response) {
-            if (response > 0) {
-                toastr.success("Items saved successfully.");
-            } else {
-                toastr.error("Failed to save items.");
+        $('.chemical-list[data-id="' + id + '"] .item-checkbox:checked').each(function () {
+            checkedChemicals.push($(this).val());
+        });
+
+        var feedback = $(`#admin_feedback_${id}`).val()?.trim() || "";
+
+        // Store locally (grouped)
+        window.savedItems[id] = {
+            items: checkedItems,
+            chemicals: checkedChemicals
+        };
+        window.savedFeedback[id] = feedback;
+
+        // Save to backend
+        $.ajax({
+            type: "POST",
+            url: "../class/edit/edit",
+            data: {
+                key: 'save_reservation_items',
+                code: id,
+                approved_items: JSON.stringify({
+                    items: checkedItems,
+                    chemicals: checkedChemicals
+                }),
+                admin_feedback: feedback
+            },
+            success: function (response) {
+                if (response > 0) {
+                    toastr.success("Items saved successfully.");
+                } else {
+                    toastr.error("Failed to save items.");
+                }
             }
+        });
+
+        // Restore grouped display
+        var htmlItems = "";
+        if (checkedItems.length > 0) {
+            htmlItems += "<strong>📦 Items:</strong><ul>";
+            checkedItems.forEach(i => htmlItems += `<li>${i}</li>`);
+            htmlItems += "</ul>";
         }
+        $('.item-list[data-id="' + id + '"]').html(htmlItems);
+
+        var htmlChemicals = "";
+        if (checkedChemicals.length > 0) {
+            htmlChemicals += "<strong>⚗️ Chemicals:</strong><ul>";
+            checkedChemicals.forEach(c => htmlChemicals += `<li>${c}</li>`);
+            htmlChemicals += "</ul>";
+        }
+        if (feedback !== "") {
+            htmlChemicals += `<div><strong>Admin Feedback:</strong><br><em>${feedback}</em></div>`;
+        }
+        $('.chemical-list[data-id="' + id + '"]').html(htmlChemicals);
+
+        // Reset snapshot
+        originalContent[id] = {
+            items: $('.item-list[data-id="' + id + '"]').html(),
+            chemicals: $('.chemical-list[data-id="' + id + '"]').html()
+        };
+
+        // Show action buttons
+        $(`.btn-edit[data-id="${id}"], .btn-accept[data-id="${id}"], .btn-cancel[data-id="${id}"]`).show();
     });
 
-    // Update HTML preview (removes checkboxes)
-    var html = "<ul>";
-    checkedItems.forEach(function (item) {
-        html += `<li>${item}</li>`;
-    });
-    html += "</ul>";
-
-    if (feedback !== "") {
-        html += `<div><strong>Admin Feedback:</strong><br><em>${feedback}</em></div>`;
-    }
-
-    listContainer.html(html);
-    originalContent[id] = listContainer.html();
-
-    $('.btn-edit[data-id="' + id + '"]').show();
-    $('.btn-accept[data-id="' + id + '"]').show();
-    $('.btn-cancel[data-id="' + id + '"]').show();
-});
-
-
-// ✅ ACCEPT Button
-tbl_pendingres.on('click', 'button.btn-accept', function (e) {
+    tbl_pendingres.on('click', 'button.btn-accept', function (e) {
     e.preventDefault();
 
     const code = $(this).data('id');
-    let approvedItems = [];
-    let allItems = [];
 
-    if ($(`.item-checkbox[data-code="${code}"]`).length > 0) {
-        // Read from checkboxes
-        $(`.item-checkbox[data-code="${code}"]`).each(function () {
-            const item = $(this).val();
-            allItems.push(item);
-            if ($(this).is(':checked')) {
-                approvedItems.push(item);
-            }
-        });
-    } else if (window.savedItems?.[code]) {
-        // Fallback to saved edit data
-        approvedItems = window.savedItems[code];
-        allItems = window.allItems?.[code] || approvedItems;
-    } else {
-        // FINAL fallback: read directly from table cell text
-        const itemsText = $(`.items-cell[data-code="${code}"]`).html(); 
-        // Assuming items are separated by <br> in your table
-        allItems = itemsText.split(/<br\s*\/?>/).map(s => s.trim()).filter(Boolean);
-        approvedItems = [...allItems]; // Approve all by default
-    }
+    // Always rely on savedItems
+    let approved = window.savedItems?.[code] || { items: [], chemicals: [] };
+    let allItems = window.allItems?.[code] || [...approved.items, ...approved.chemicals];
 
     let feedback = window.savedFeedback?.[code]?.trim() || "";
-    const hasDisapproved = approvedItems.length < allItems.length;
+    const hasDisapproved = (approved.items.length + approved.chemicals.length) < allItems.length;
 
     if (hasDisapproved && feedback === "") {
         toastr.warning("Please provide feedback for disapproved items.");
         return;
     }
 
-    const remarks = (approvedItems.length === allItems.length)
-        ? `All items approved`
-        : `Approved items: ${approvedItems.join("<br>")}<br>Not approved: ${allItems.filter(item => !approvedItems.includes(item)).join("<br>")}<br>Feedback: ${feedback}`;
+    const remarks = (approved.items.length + approved.chemicals.length === allItems.length)
+        ? `All approved`
+        : `Approved: ${[...approved.items, ...approved.chemicals].join("<br>")}<br>
+           Not approved: ${allItems.filter(x => ![...approved.items, ...approved.chemicals].includes(x)).join("<br>")}<br>
+           Feedback: ${feedback}`;
 
     $.ajax({
         type: "POST",
@@ -1209,7 +1237,7 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
         data: {
             key: 'accept_reservation',
             code: code,
-            approved_items: JSON.stringify(approvedItems),
+            approved_items: JSON.stringify(approved), // ✅ send grouped
             remarks: remarks
         },
         success: function (data) {
@@ -1223,7 +1251,10 @@ tbl_pendingres.on('click', 'button.btn-accept', function (e) {
         }
     });
 });
+
 });
+
+
 tbl_reserved.on('click', 'button.borrowreserve', function(e){
 	e.preventDefault();
 	var a = $(this).attr('data-id');
