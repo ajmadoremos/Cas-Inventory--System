@@ -826,39 +826,41 @@ public function display_borrow()
 
         if (!isset($grouped[$code])) {
             $grouped[$code] = [
-                'id'       => $value['id'],
+                'id'         => $value['id'],
                 'borrowcode' => $code,
-                'date_borrow' => $value['date_borrow'],
-                'member_id'   => $value['member_id'],
-                'fname'    => $value['m_fname'],
-                'lname'    => $value['m_lname'],
-                'rm_name'  => $value['rm_name'],
-                'items'    => [],
-                'chems'    => []
+                'date_borrow'=> $value['date_borrow'],
+                'member_id'  => $value['member_id'],
+                'fname'      => $value['m_fname'],
+                'lname'      => $value['m_lname'],
+                'rm_name'    => $value['rm_name'],
+                'items'      => [],
+                'chems'      => []
             ];
         }
 
-        // ✅ Borrower flow (JSON data only)
-        $approved_items_json = !empty($value['remark']) 
-            ? $value['remark'] 
-            : $value['temp_approved_items'];
+        // ✅ Use JSON from temp_approved_items first
+        $approved_items_arr = [];
+        if (!empty($value['temp_approved_items'])) {
+            $decoded = json_decode($value['temp_approved_items'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $approved_items_arr = $decoded;
+            }
+        }
 
-        if (!empty($approved_items_json)) {
-            $approved_items_arr = json_decode($approved_items_json, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr)) {
-                if (!empty($approved_items_arr['items'])) {
-                    foreach ($approved_items_arr['items'] as $item) {
-                        $grouped[$code]['items'][] = htmlspecialchars($item, ENT_QUOTES, 'UTF-8');
-                    }
+        // ✅ Populate items/chemicals from JSON if available
+        if (!empty($approved_items_arr)) {
+            if (!empty($approved_items_arr['items'])) {
+                foreach ($approved_items_arr['items'] as $item) {
+                    $grouped[$code]['items'][] = htmlspecialchars($item, ENT_QUOTES, 'UTF-8');
                 }
-                if (!empty($approved_items_arr['chemicals'])) {
-                    foreach ($approved_items_arr['chemicals'] as $chem) {
-                        $grouped[$code]['chems'][] = htmlspecialchars($chem, ENT_QUOTES, 'UTF-8');
-                    }
+            }
+            if (!empty($approved_items_arr['chemicals'])) {
+                foreach ($approved_items_arr['chemicals'] as $chem) {
+                    $grouped[$code]['chems'][] = htmlspecialchars($chem, ENT_QUOTES, 'UTF-8');
                 }
             }
         } else {
-            // ⚠️ Admin flow (fallback to DB)
+            // ⚠️ Fallback: use DB queries for legacy/manual borrow
             if (!empty($value['stock_id'])) {
                 $stmtItems = $conn->prepare("
                     SELECT i.i_deviceID, i.i_category
@@ -870,7 +872,11 @@ public function display_borrow()
                 $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
                 if (empty($items)) {
-                    $stmtItems2 = $conn->prepare("SELECT i.i_deviceID, i.i_category FROM item i WHERE i.id = ?");
+                    $stmtItems2 = $conn->prepare("
+                        SELECT i.i_deviceID, i.i_category 
+                        FROM item i 
+                        WHERE i.id = ?
+                    ");
                     $stmtItems2->execute([$value['stock_id']]);
                     $items = $stmtItems2->fetchAll(PDO::FETCH_ASSOC);
                 }
@@ -906,7 +912,7 @@ public function display_borrow()
         $g['chems'] = array_values(array_unique($g['chems']));
     }
 
-    // Build DataTable response
+    // ✅ Build DataTable response
     $data = ['data' => []];
     foreach ($grouped as $g) {
         $approved_items_display = "<div style='margin:0; padding-left:5px;'>";
@@ -1395,76 +1401,67 @@ public function display_borrow()
     $session = $_SESSION['member_id'];
 
     $sql = $conn->prepare('
-        SELECT *,
-               reservation.status as stat,
-               GROUP_CONCAT(item.i_deviceID, " - " ,item.i_category,  "<br/>") item_borrow
+        SELECT reservation.*, reservation_status.remark, reservation_status.temp_approved_items, room.rm_name, member.m_fname, member.m_lname,
+               GROUP_CONCAT(item.i_deviceID, " - ", item.i_category, " (", reservation_items.quantity, ")") AS item_borrow
         FROM reservation
-        LEFT JOIN item_stock ON item_stock.id = reservation.stock_id
-        LEFT JOIN item ON item.id = item_stock.item_id
+        LEFT JOIN reservation_items ON reservation_items.reservation_id = reservation.id
+        LEFT JOIN item ON item.id = reservation_items.item_id
         LEFT JOIN member ON member.id = reservation.member_id
         LEFT JOIN room ON room.id = reservation.assign_room
         LEFT JOIN reservation_status ON reservation_status.reservation_code = reservation.reservation_code
-        WHERE reservation.member_id = ? 
+        WHERE reservation.member_id = ?
         GROUP BY reservation.reservation_code
     ');
     $sql->execute([$session]);
-    $fetch = $sql->fetchAll();
-    $count = $sql->rowCount();
+    $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
 
-    if ($count > 0) {
-        foreach ($fetch as $value) {
+    $data['data'] = [];
 
-            // ✅ Map status
-            if ($value['stat'] == 0) {
-                $status = 'Pending';
-            } elseif ($value['stat'] == 1) {
-                $status = 'Accepted';
-            } elseif ($value['stat'] == 2) {
-                $status = 'Cancelled';
-            } else {
-                $status = 'Borrowed';
-            }
+    foreach ($fetch as $value) {
+        // Map status
+        $status = match($value['status']) {
+            0 => 'Pending',
+            1 => 'Accepted',
+            2 => 'Cancelled',
+            3 => 'Borrowed',
+            default => 'Unknown'
+        };
 
-            // ✅ Reservation date
-            $date = date('F d,Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
+        // Reservation date
+        $date = date('F d, Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
 
-            // ✅ Build Items column
-            $itemsDisplay = $value['item_borrow']; // default from GROUP_CONCAT
-
-            if (!empty($value['remark'])) {
-                $decoded = json_decode($value['remark'], true);
-
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $itemsDisplay = "";
-
-                    if (!empty($decoded['items'])) {
-                        $itemsDisplay .= "<strong>📦 Items:</strong><br/>" . implode("<br/>", $decoded['items']) . "<br/>";
-                    }
-                    if (!empty($decoded['chemicals'])) {
-                        $itemsDisplay .= "<strong>⚗️ Chemicals:</strong><br/>" . implode("<br/>", $decoded['chemicals']);
-                    }
-
-                    // If still empty fallback to old data
-                    if (empty($itemsDisplay)) {
-                        $itemsDisplay = $value['item_borrow'];
-                    }
+        // Items display: use temp_approved_items JSON if available
+        $itemsDisplay = $value['item_borrow'];
+        if (!empty($value['temp_approved_items'])) {
+            $decoded = json_decode($value['temp_approved_items'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $itemsDisplay = "";
+                if (!empty($decoded['items'])) {
+                    $itemsDisplay .= "<strong>📦 Items:</strong><br/>" . implode("<br/>", $decoded['items']) . "<br/>";
+                }
+                if (!empty($decoded['chemicals'])) {
+                    $itemsDisplay .= "<strong>⚗️ Chemicals:</strong><br/>" . implode("<br/>", $decoded['chemicals']) . "<br/>";
                 }
             }
-
-            $data['data'][] = array(
-                $date,
-                $itemsDisplay,
-                ucwords($value['rm_name']),
-                $status,
-                $value['remark'] // keep raw remark as last column
-            );
         }
-        echo json_encode($data);
-    } else {
-        $data['data'] = array();
-        echo json_encode($data);
+
+        // Remarks: use human-readable string from remark column
+        $remarks = $value['remark'] ?: "No remarks available.";
+
+        // Push to DataTable
+        $data['data'][] = [
+            $date,
+            $itemsDisplay,
+            ucwords($value['rm_name']),
+            $remarks,
+            $status
+        ];
     }
+
+    echo json_encode($data);
 }
+
+
 
 		public function chart_borrow()
 		{

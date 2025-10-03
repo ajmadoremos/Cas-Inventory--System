@@ -44,7 +44,7 @@
 							<thead>
 								<tr>
 									<th>Reservation Date</th>
-									<th>Items</th>
+									<th>Items/Chemicals</th>
 									<th>Room Assign</th>
 									
 									<th>Status</th>

@@ -1225,11 +1225,41 @@ $(document).ready(function () {
         return;
     }
 
-    const remarks = (approved.items.length + approved.chemicals.length === allItems.length)
-        ? `All approved`
-        : `Approved: ${[...approved.items, ...approved.chemicals].join("<br>")}<br>
-           Not approved: ${allItems.filter(x => ![...approved.items, ...approved.chemicals].includes(x)).join("<br>")}<br>
-           Feedback: ${feedback}`;
+    // 🔹 Build remarks string in requested format
+    let remarks = "";
+
+    if (approved.items.length > 0) {
+        remarks += "Approved Item:<br>";
+        approved.items.forEach(it => {
+            remarks += " - " + it + "<br>";
+        });
+        remarks += "<br>";
+    }
+
+    if (approved.chemicals.length > 0) {
+        remarks += "Approved Chemical:<br>";
+        approved.chemicals.forEach(ch => {
+            remarks += " - " + ch + "<br>";
+        });
+        remarks += "<br>";
+    }
+
+    let notApproved = allItems.filter(x => ![...approved.items, ...approved.chemicals].includes(x));
+    if (notApproved.length > 0) {
+        remarks += "Not Approved:<br>";
+        notApproved.forEach(na => {
+            remarks += " - " + na + "<br>";
+        });
+        remarks += "<br>";
+    }
+
+    if (feedback) {
+        remarks += "Feedback on Not Approved:<br>" + feedback + "<br>";
+    }
+
+    if (remarks.trim() === "") {
+        remarks = "No items/chemicals approved.";
+    }
 
     $.ajax({
         type: "POST",
@@ -1237,7 +1267,7 @@ $(document).ready(function () {
         data: {
             key: 'accept_reservation',
             code: code,
-            approved_items: JSON.stringify(approved), // ✅ send grouped
+            approved_items: JSON.stringify(approved), // ✅ send grouped JSON
             remarks: remarks
         },
         success: function (data) {

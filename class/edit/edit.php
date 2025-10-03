@@ -439,33 +439,79 @@
 
     $h_desc = 'accept client reservation';
     $h_tbl = 'reservation';
-    $sessionid = $_SESSION['admin_id'];
-    $sessiontype = $_SESSION['admin_type'];
+    $sessionid = $_SESSION['admin_id'] ?? null;
+    $sessiontype = $_SESSION['admin_type'] ?? null;
 
-     // Get feedback and approved items from POST
+    // From frontend
+    $remarks = $_POST['remarks'] ?? '';
+    $approvedItemsJson = $_POST['approved_items'] ?? json_encode(["items" => [], "chemicals" => []], JSON_UNESCAPED_UNICODE);
     $feedback = $_POST['admin_feedback'] ?? '';
-    $approvedItems = $_POST['approved_items'] ?? [];
 
-    // Combine approved items into string
-    $approvedList = is_array($approvedItems) ? implode(", ", $approvedItems) : '';
+    // ✅ If frontend didn't send remarks, build a fallback string
+    if (empty(trim($remarks))) {
+        $approvedItems = json_decode($approvedItemsJson, true);
+        $approvedItems = is_array($approvedItems) ? $approvedItems : ["items" => [], "chemicals" => []];
 
-    // Final remarks (optional: only show approved items)
-    $finalRemarks = (count($approvedItems) === 0) ? 'No items approved.' : $feedback;
+        $approvedItemList = $approvedItems['items'] ?? [];
+        $approvedChemicalList = $approvedItems['chemicals'] ?? [];
 
-    // Update reservation status
+        $remarks = "";
+
+        if (!empty($approvedItemList)) {
+            $remarks .= "Approved Item:\n";
+            foreach ($approvedItemList as $item) {
+                $remarks .= " - " . $item . "\n";
+            }
+            $remarks .= "\n";
+        }
+
+        if (!empty($approvedChemicalList)) {
+            $remarks .= "Approved Chemical:\n";
+            foreach ($approvedChemicalList as $chem) {
+                $remarks .= " - " . $chem . "\n";
+            }
+            $remarks .= "\n";
+        }
+
+        if (!empty($feedback)) {
+            $remarks .= "Feedback on Not Approved:\n" . $feedback . "\n";
+        }
+
+        if (empty(trim($remarks))) {
+            $remarks = "No items/chemicals approved.";
+        }
+    }
+
+    // ✅ Step 1: Update reservation main table
     $sql = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
     $sql->execute([1, $code]);
 
     if ($sql->rowCount() > 0) {
-        $add = $conn->prepare('INSERT INTO reservation_status (reservation_code, remark, res_status) VALUES (?, ?, ?)');
-        $add->execute([$code, $finalRemarks, 1]);
+        // ✅ Step 2: Save final remarks + structured JSON + feedback
+        $stmtCheck = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
+        $stmtCheck->execute([$code]);
 
-        // Optionally update another field or table with $approvedList if needed
+        if ($stmtCheck->rowCount() > 0) {
+            $add = $conn->prepare('
+                UPDATE reservation_status
+                SET remark = ?, temp_approved_items = ?, temp_feedback = ?, res_status = 1
+                WHERE reservation_code = ?
+            ');
+            $add->execute([$remarks, $approvedItemsJson, $feedback, $code]);
+        } else {
+            $add = $conn->prepare('
+                INSERT INTO reservation_status (reservation_code, remark, temp_approved_items, temp_feedback, res_status)
+                VALUES (?, ?, ?, ?, 1)
+            ');
+            $add->execute([$code, $remarks, $approvedItemsJson, $feedback]);
+        }
+
         echo 1;
     } else {
         echo 0;
     }
 }
+
 
 		public function cancel_reservation($remarks_cancel,$codereserve)
 		{
@@ -754,7 +800,11 @@
 		case 'accept_reservation':
     $code = $_POST['code'];
 
-    // Step 1: Mark reservation as accepted in main table
+    // From frontend
+    $remarks = $_POST['remarks'] ?? 'No items/chemicals approved.';
+    $approvedItemsJson = $_POST['approved_items'] ?? json_encode(["items" => [], "chemicals" => []], JSON_UNESCAPED_UNICODE);
+
+    // Step 1: Mark reservation as accepted
     $stmtUpdate = $conn->prepare("
         UPDATE reservation
         SET status = 1
@@ -762,74 +812,27 @@
     ");
     $stmtUpdate->execute([$code]);
 
-    // Step 2: Check if there are temp approved items
-    $stmtTemp = $conn->prepare("SELECT temp_approved_items FROM reservation_status WHERE reservation_code = ?");
-    $stmtTemp->execute([$code]);
-    $tempRow = $stmtTemp->fetch(PDO::FETCH_ASSOC);
-
-    if ($tempRow && !empty($tempRow['temp_approved_items'])) {
-        // ✅ Use the saved items/chemicals
-        $finalApprovedJson = $tempRow['temp_approved_items'];
-    } else {
-        // ❌ If no saved version → fallback to all original
-        // Items
-        $stmtItems = $conn->prepare("
-            SELECT i.i_deviceID, i.i_category, ri.quantity
-            FROM reservation_items ri
-            JOIN item i ON ri.item_id = i.id
-            WHERE ri.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
-        ");
-        $stmtItems->execute([$code]);
-        $allItemRows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
-
-        $allItems = array_map(function($row) {
-            return $row['i_deviceID'] . " - " . $row['i_category'] . " (" . $row['quantity'] . ")";
-        }, $allItemRows);
-
-        // Chemicals
-        $stmtChem = $conn->prepare("
-            SELECT cr.r_name, cr.unit, rc.quantity
-            FROM reservation_chemicals rc
-            JOIN chemical_reagents cr ON rc.chemical_id = cr.r_id
-            WHERE rc.reservation_id = (SELECT id FROM reservation WHERE reservation_code = ?)
-        ");
-        $stmtChem->execute([$code]);
-        $allChemRows = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
-
-        $allChemicals = array_map(function($row) {
-            return $row['r_name'] . " (" . $row['quantity'] . " " . $row['unit'] . ")";
-        }, $allChemRows);
-
-        $finalApproved = [
-            "items" => $allItems,
-            "chemicals" => $allChemicals
-        ];
-        $finalApprovedJson = json_encode($finalApproved, JSON_UNESCAPED_UNICODE);
-    }
-
-    // Step 3: Update reservation_status with final accepted items
+    // Step 2: Save into reservation_status
     $stmtCheck = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
     $stmtCheck->execute([$code]);
 
     if ($stmtCheck->rowCount() > 0) {
         $stmt = $conn->prepare("
             UPDATE reservation_status
-            SET remark = ?, res_status = 1
+            SET remark = ?, temp_approved_items = ?, temp_feedback = ?, res_status = 1
             WHERE reservation_code = ?
         ");
-        $stmt->execute([$finalApprovedJson, $code]);
+        $stmt->execute([$remarks, $approvedItemsJson, $remarks, $code]);
     } else {
         $stmt = $conn->prepare("
-            INSERT INTO reservation_status (reservation_code, remark, res_status)
-            VALUES (?, ?, 1)
+            INSERT INTO reservation_status (reservation_code, remark, temp_approved_items, temp_feedback, res_status)
+            VALUES (?, ?, ?, ?, 1)
         ");
-        $stmt->execute([$code, $finalApprovedJson]);
+        $stmt->execute([$code, $remarks, $approvedItemsJson, $remarks]);
     }
 
     echo 1; // success
     break;
-
-
 
 
 	
