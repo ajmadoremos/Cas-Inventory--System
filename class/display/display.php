@@ -766,28 +766,32 @@ public function display_reagents_expired() {
 public function display_chemical_borrow()
 {
     global $conn;
-    $sql = $conn->prepare('SELECT * 
-                           FROM chemical_reagents
-                           WHERE r_quantity > ?  
-                           AND r_status = "Available"
-                           ORDER BY r_name ASC');
-    $sql->execute([0]);
+    $sql = $conn->prepare('
+        SELECT * 
+        FROM chemical_reagents
+        WHERE 
+            (unit IS NOT NULL AND unit > 0)
+            AND r_status = "Available"
+        ORDER BY r_name ASC
+    ');
+    $sql->execute();
     $row = $sql->rowCount();
-    $fetch = $sql->fetchAll();
 
     if ($row > 0) {
+        $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
+        $data = [];
         foreach ($fetch as $value) {
-            $data[] = array(
+            $data[] = [
                 'id'        => $value['r_id'],
                 'name'      => ucwords($value['r_name']),
                 'quantity'  => $value['r_quantity'] . ' ' . $value['unit'],
                 'storage'   => $value['r_storage'],
                 'hazard'    => $value['r_hazard'],
-                'status'    => $value['r_status'], 
+                'status'    => $value['r_status'],
                 'date_received' => $value['r_date_received'],
                 'date_opened'   => $value['r_date_opened'],
                 'expiration'    => $value['r_expiration']
-            );
+            ];
         }
         echo json_encode($data);
     } else {
@@ -798,7 +802,8 @@ public function display_chemical_borrow()
 
 public function display_borrow()
 {
-    global $conn; 
+    global $conn;
+
     $sql = $conn->prepare('
         SELECT 
             b.id,
@@ -821,54 +826,55 @@ public function display_borrow()
     $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
 
     $grouped = [];
-    foreach ($fetch as $value) {
-        $code = $value['borrowcode'];
+
+    foreach ($fetch as $row) {
+        $code = $row['borrowcode'];
 
         if (!isset($grouped[$code])) {
             $grouped[$code] = [
-                'id'         => $value['id'],
+                'id'         => $row['id'],
                 'borrowcode' => $code,
-                'date_borrow'=> $value['date_borrow'],
-                'member_id'  => $value['member_id'],
-                'fname'      => $value['m_fname'],
-                'lname'      => $value['m_lname'],
-                'rm_name'    => $value['rm_name'],
+                'date_borrow'=> $row['date_borrow'],
+                'member_id'  => $row['member_id'],
+                'fname'      => $row['m_fname'],
+                'lname'      => $row['m_lname'],
+                'rm_name'    => $row['rm_name'],
                 'items'      => [],
                 'chems'      => []
             ];
         }
 
-        // ✅ Use JSON from temp_approved_items first
-        $approved_items_arr = [];
-        if (!empty($value['temp_approved_items'])) {
-            $decoded = json_decode($value['temp_approved_items'], true);
+        // ✅ Prefer JSON-based temp_approved_items if available
+        $approved = [];
+        if (!empty($row['temp_approved_items'])) {
+            $decoded = json_decode($row['temp_approved_items'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $approved_items_arr = $decoded;
+                $approved = $decoded;
             }
         }
 
-        // ✅ Populate items/chemicals from JSON if available
-        if (!empty($approved_items_arr)) {
-            if (!empty($approved_items_arr['items'])) {
-                foreach ($approved_items_arr['items'] as $item) {
-                    $grouped[$code]['items'][] = htmlspecialchars($item, ENT_QUOTES, 'UTF-8');
+        // ✅ Fill from JSON data first
+        if (!empty($approved)) {
+            if (!empty($approved['items'])) {
+                foreach ($approved['items'] as $item) {
+                    $grouped[$code]['items'][] = htmlspecialchars(trim($item), ENT_QUOTES, 'UTF-8');
                 }
             }
-            if (!empty($approved_items_arr['chemicals'])) {
-                foreach ($approved_items_arr['chemicals'] as $chem) {
-                    $grouped[$code]['chems'][] = htmlspecialchars($chem, ENT_QUOTES, 'UTF-8');
+            if (!empty($approved['chemicals'])) {
+                foreach ($approved['chemicals'] as $chem) {
+                    $grouped[$code]['chems'][] = htmlspecialchars(trim($chem), ENT_QUOTES, 'UTF-8');
                 }
             }
         } else {
-            // ⚠️ Fallback: use DB queries for legacy/manual borrow
-            if (!empty($value['stock_id'])) {
+            // ⚠️ Fallback for old/manual borrow records (no JSON)
+            if (!empty($row['stock_id'])) {
                 $stmtItems = $conn->prepare("
                     SELECT i.i_deviceID, i.i_category
                     FROM item_stock ist
                     JOIN item i ON i.id = ist.item_id
                     WHERE ist.id = ?
                 ");
-                $stmtItems->execute([$value['stock_id']]);
+                $stmtItems->execute([$row['stock_id']]);
                 $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
                 if (empty($items)) {
@@ -877,24 +883,25 @@ public function display_borrow()
                         FROM item i 
                         WHERE i.id = ?
                     ");
-                    $stmtItems2->execute([$value['stock_id']]);
+                    $stmtItems2->execute([$row['stock_id']]);
                     $items = $stmtItems2->fetchAll(PDO::FETCH_ASSOC);
                 }
 
-                foreach ($items as $item) {
-                    $dev = $item['i_deviceID'] ?? '';
-                    $cat = $item['i_category'] ?? '';
+                foreach ($items as $it) {
+                    $dev = $it['i_deviceID'] ?? '';
+                    $cat = $it['i_category'] ?? '';
                     $grouped[$code]['items'][] = htmlspecialchars(trim($dev . (($dev && $cat) ? ' - ' : '') . $cat), ENT_QUOTES, 'UTF-8');
                 }
             }
 
+            // 🧪 Fetch chemicals if any
             $stmtChem = $conn->prepare("
                 SELECT c.r_name, c.unit, bc.quantity
                 FROM borrow_chemicals bc
                 JOIN chemical_reagents c ON bc.chemical_id = c.r_id
                 WHERE bc.borrow_id = ?
             ");
-            $stmtChem->execute([$value['id']]);
+            $stmtChem->execute([$row['id']]);
             $chems = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($chems as $chem) {
@@ -906,43 +913,43 @@ public function display_borrow()
         }
     }
 
-    // 🔑 Remove duplicates
+    // 🧹 Remove duplicates and reindex arrays
     foreach ($grouped as &$g) {
         $g['items'] = array_values(array_unique($g['items']));
         $g['chems'] = array_values(array_unique($g['chems']));
     }
 
-    // ✅ Build DataTable response
+    // ✅ Prepare JSON for DataTable
     $data = ['data' => []];
     foreach ($grouped as $g) {
-        $approved_items_display = "<div style='margin:0; padding-left:5px;'>";
+        $borrowedDisplay = "<div style='margin:0; padding-left:5px;'>";
         if (!empty($g['items'])) {
-            $approved_items_display .= "<div><strong>📦 Items:</strong><ul style='margin:0; padding-left:18px;'>";
-            foreach ($g['items'] as $entry) {
-                $approved_items_display .= "<li>{$entry}</li>";
+            $borrowedDisplay .= "<div><strong>📦 Items:</strong><ul style='margin:0; padding-left:18px;'>";
+            foreach ($g['items'] as $item) {
+                $borrowedDisplay .= "<li>{$item}</li>";
             }
-            $approved_items_display .= "</ul></div>";
+            $borrowedDisplay .= "</ul></div>";
         }
         if (!empty($g['chems'])) {
-            $approved_items_display .= "<div><strong>⚗️ Chemicals:</strong><ul style='margin:0; padding-left:18px;'>";
-            foreach ($g['chems'] as $entry) {
-                $approved_items_display .= "<li>{$entry}</li>";
+            $borrowedDisplay .= "<div><strong>⚗️ Chemicals:</strong><ul style='margin:0; padding-left:18px;'>";
+            foreach ($g['chems'] as $chem) {
+                $borrowedDisplay .= "<li>{$chem}</li>";
             }
-            $approved_items_display .= "</ul></div>";
+            $borrowedDisplay .= "</ul></div>";
         }
         if (empty($g['items']) && empty($g['chems'])) {
-            $approved_items_display .= "<em>No borrowed items/chemicals</em>";
+            $borrowedDisplay .= "<em>No borrowed items or chemicals</em>";
         }
-        $approved_items_display .= "</div>";
+        $borrowedDisplay .= "</div>";
 
-        $dataId = htmlspecialchars((string)($g['member_id'].'/'.$g['borrowcode']), ENT_QUOTES, 'UTF-8');
+        $dataId = htmlspecialchars("{$g['member_id']}/{$g['borrowcode']}", ENT_QUOTES, 'UTF-8');
         $button = "<button class='btn btn-primary' data-id='{$dataId}'>Return <i class='fa fa-chevron-right'></i></button>";
         $date = !empty($g['date_borrow']) ? date('F d, Y h:i:s A', strtotime($g['date_borrow'])) : '';
 
         $data['data'][] = [
-            htmlspecialchars(trim(($g['fname'] ?? '').' '.($g['lname'] ?? '')), ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars(trim(($g['fname'] ?? '') . ' ' . ($g['lname'] ?? '')), ENT_QUOTES, 'UTF-8'),
             $date,
-            $approved_items_display,
+            $borrowedDisplay,
             $button,
             htmlspecialchars(ucwords($g['rm_name'] ?? ''), ENT_QUOTES, 'UTF-8')
         ];
@@ -955,6 +962,7 @@ public function display_borrow()
 		public function display_return()
 {
     global $conn; 
+    date_default_timezone_set('Asia/Manila'); // ✅ Fix timezone at the start
 
     $select_base = "borrow.borrowcode, 
                     GROUP_CONCAT(borrow.id) AS borrow_ids, 
@@ -1020,7 +1028,7 @@ public function display_borrow()
         foreach ($fetch as $value) {
             $approved_items_display = "";
 
-            // ✅ If temp_approved_items exists
+            // ✅ TEMP APPROVED ITEMS HANDLING (unchanged)
             if (!empty($value['temp_approved_items']) && trim($value['temp_approved_items']) !== "") {
                 $approved_items_arr = json_decode($value['temp_approved_items'], true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($approved_items_arr)) {
@@ -1046,7 +1054,7 @@ public function display_borrow()
                 }
             }
 
-            // ✅ Fallback (show all items + chemicals)
+            // ✅ Fallback (unchanged)
             if (empty($approved_items_display)) {
                 $approved_items_display = "<div style='margin:0; padding-left:5px;'>";
                 
@@ -1054,7 +1062,6 @@ public function display_borrow()
                     $approved_items_display .= "<div><strong>📦 Items:</strong><br/>" . $value['item_borrow'] . "</div>";
                 }
 
-                // ✅ fetch chemicals (loop over all borrow_ids for this borrowcode)
                 $borrow_ids = explode(",", $value['borrow_ids']);
                 $chems = [];
                 foreach ($borrow_ids as $bid) {
@@ -1082,19 +1089,27 @@ public function display_borrow()
                 $approved_items_display .= "</div>";
             }
 
-            $date = ($value['date_return'] == NULL) ? " --- " : date('F d,Y H:i:s A', strtotime($value['date_return']));
-            $date2 = date('F d,Y H:i:s A', strtotime($value['date_borrow']));
-            
-            $data['data'][] = array($value['m_fname'].' '.$value['m_lname'], $approved_items_display, $date, $date2);
+            // ✅ TIME DISPLAY FIX
+            $date_return = ($value['date_return'] == NULL)
+                ? " --- "
+                : date('F d, Y h:i:s A', strtotime($value['date_return'] . ' +8 hours')); // Adjust to Manila time if stored as UTC
+
+            $date_borrow = date('F d, Y h:i:s A', strtotime($value['date_borrow']));
+
+            $data['data'][] = array(
+                $value['m_fname'].' '.$value['m_lname'], 
+                $approved_items_display, 
+                $date_return, 
+                $date_borrow
+            );
         }
+
         echo json_encode($data);
     } else {
         $data['data'] = array();
         echo json_encode($data);
     }
 }
-
-
 
 		
 	public function pending_reservation()
@@ -1116,7 +1131,7 @@ public function display_borrow()
 
             -- Chemicals (from reservation_chemicals)
             GROUP_CONCAT(
-                DISTINCT CONCAT(cr.r_name, " (", rc.quantity, " ", cr.unit, ")")
+                DISTINCT CONCAT(cr.r_name, "||", rc.quantity)
                 SEPARATOR "<br/>"
             ) AS chemical_borrow
 
@@ -1151,7 +1166,7 @@ public function display_borrow()
         foreach ($fetch as $value) {
             $reservation_code = $value['reservation_code'];
 
-            // --- Items ---
+            // --- ITEMS ---
             $items_raw = array_filter(explode("<br/>", $value['item_borrow']));
             $itemHtml = "";
             if (!empty($items_raw)) {
@@ -1175,7 +1190,7 @@ public function display_borrow()
                 $itemHtml .= "</ul>";
             }
 
-            // --- Chemicals ---
+            // --- CHEMICALS ---
             $chemicals_raw = array_filter(explode("<br/>", $value['chemical_borrow']));
             $chemicalHtml = "";
             if (!empty($chemicals_raw)) {
@@ -1183,6 +1198,12 @@ public function display_borrow()
                 foreach ($chemicals_raw as $chem) {
                     $chem = trim($chem);
                     if ($chem !== "") {
+                        // Split into name and quantity (ex: Ethanol||41)
+                        $parts = explode("||", $chem);
+                        $chemName = $parts[0] ?? '';
+                        $chemQty = isset($parts[1]) ? trim($parts[1]) . " ml" : ''; // automatic ml
+                        $display = "{$chemName} ({$chemQty})";
+
                         $chemicalHtml .= "
                             <li>
                                 <label class='item-editable' style='display:none'>
@@ -1190,19 +1211,19 @@ public function display_borrow()
                                            class='item-checkbox' 
                                            data-code='{$reservation_code}' 
                                            checked 
-                                           value='{$chem}'>
+                                           value='{$display}'>
                                 </label>
-                                <span class='item-text'>{$chem}</span>
+                                <span class='item-text'>{$display}</span>
                             </li>";
                     }
                 }
                 $chemicalHtml .= "</ul>";
             }
 
-            // Combine Items + Chemicals
+            // --- Combine Items + Chemicals ---
             $borrowHtml = $itemHtml . $chemicalHtml;
 
-            // Feedback textarea
+            // --- Feedback textarea ---
             $feedbackBox = "
                 <textarea id='admin_feedback_{$reservation_code}' 
                           class='form-control feedback-box' 
@@ -1211,7 +1232,7 @@ public function display_borrow()
                           placeholder='Explain why some items/chemicals are not approved'></textarea>
             ";
 
-            // Action buttons
+            // --- Action buttons ---
             $buttons = "
                 <div class='btn-action-group' data-id='{$reservation_code}'>
                     <button class='btn btn-warning btn-edit' data-id='{$reservation_code}'>Edit</button>
@@ -1222,13 +1243,13 @@ public function display_borrow()
                 </div>
             ";
 
-            // Reservation date
+            // --- Reservation date ---
             $date = date('F d, Y H:i:s A', strtotime($value['reserve_date'] . ' ' . $value['reservation_time']));
 
-            // Add row to DataTable response
+            // --- Final Data Row ---
             $data['data'][] = [
                 $value['m_fname'] . ' ' . $value['m_lname'],
-                $borrowHtml . $feedbackBox, // ✅ Items + Chemicals in one box
+                $borrowHtml . $feedbackBox, // ✅ Items + Chemicals combined
                 $date,
                 ucwords($value['rm_name']),
                 $buttons
@@ -1240,6 +1261,7 @@ public function display_borrow()
         echo json_encode(['data' => []]);
     }
 }
+
 
 
 		public function accept_reservation()
@@ -1268,10 +1290,10 @@ public function display_borrow()
                 WHERE ri.reservation_id = r.id
             ) AS item_borrow,
 
-            -- Chemicals
+            -- Chemicals (show quantity + automatic 'ml')
             (
                 SELECT GROUP_CONCAT(
-                    DISTINCT CONCAT(cr.r_name, ' (', rc.quantity, ' ', cr.unit, ')')
+                    DISTINCT CONCAT(cr.r_name, ' (', rc.quantity, ' ml)')
                     SEPARATOR '<br/>'
                 )
                 FROM reservation_chemicals rc
@@ -1336,7 +1358,7 @@ public function display_borrow()
                     $approved_display .= "</ul>";
                 }
 
-                // ✅ Chemicals with 🧪 header
+                // ✅ Chemicals with 🧪 header (auto-add "ml")
                 if (!empty($value['chemical_borrow'])) {
                     $approved_display .= "<strong>🧪 Chemicals:</strong><ul>";
                     foreach (explode('<br/>', $value['chemical_borrow']) as $chem) {
@@ -1392,6 +1414,7 @@ public function display_borrow()
         echo json_encode(['data' => []]);
     }
 }
+
 
 
 		public function tbluser_reservation()

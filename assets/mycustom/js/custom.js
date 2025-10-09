@@ -174,37 +174,44 @@ $.ajax({
 .fail(function(data){
     console.log(data.statusText);
 });
+// ✅ Fetch and display available chemicals for borrowing
 $.ajax({
     type: "POST",
-    url: "../class/display/display",
+    url: "../class/display/display", // your PHP handler
     data: { key: "display_chemical_borrow" },
-    success: function(data){
-        if(data != ''){ // data exists
-            var ndata = JSON.parse(data); // parse JSON
+    success: function(data) {
+        if (data != '') {
+            try {
+                var ndata = JSON.parse(data); // parse JSON
+                var select = "";
 
-            var select = "";
-            $.each(ndata, function(i, x){
-                select += "<option value='"+x.id+"'>"
-                            + x.name + " - "
-                            + x.quantity + " - "
-                            + x.storage + " - "
-                            + x.hazard + " - ["+ x.status +"]"
-                            + "</option>";
-            });
+                $.each(ndata, function(i, x) {
+                    select += "<option value='" + x.id + "'>"
+                        + x.name + " - "
+                        + x.quantity + " - "
+                        + x.storage + " - "
+                        + x.hazard + " - [" + x.status + "]"
+                        + "</option>";
+                });
 
-            // Destroy previous Select2 instance if exists
-            if ($('.borrowchemical').hasClass("select2-hidden-accessible")) {
-                $('.borrowchemical').select2('destroy');
+                // Destroy old Select2 if already initialized
+                if ($('.borrowchemical').hasClass("select2-hidden-accessible")) {
+                    $('.borrowchemical').select2('destroy');
+                }
+
+                // Fill select and reinitialize Select2
+                $('.borrowchemical').html(select).select2({
+                    placeholder: "Select chemical to borrow",
+                    maximumSelectionLength: 5,
+                    tokenSeparators: [',', ' ']
+                });
+
+            } catch (e) {
+                console.error("JSON Parse Error:", e, data);
             }
 
-            // Fill select and initialize Select2
-            $('.borrowchemical').html(select).select2({
-                placeholder: "Select chemical to borrow",
-                maximumSelectionLength: 5,
-                tokenSeparators: [',', ' ']
-            });
-
-        } else { // no data
+        } else {
+            // No data case
             if ($('.borrowchemical').hasClass("select2-hidden-accessible")) {
                 $('.borrowchemical').select2('destroy');
             }
@@ -213,7 +220,7 @@ $.ajax({
             });
         }
     },
-    error: function(xhr, status, error){
+    error: function(xhr, status, error) {
         console.log("Chemical AJAX error:", xhr.responseText);
     }
 });

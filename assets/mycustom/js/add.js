@@ -557,12 +557,17 @@ $('.client_reservation').submit(function(e){
         return;
     }
 
-    // Make sure select2 values are serialized properly
-    $('.borrowitem, .borrowchemical').each(function(){
-        $(this).val($(this).val() || []).trigger('change');
+    // Get all ml amounts entered for each selected chemical
+    var chemicalAmounts = {};
+    $('input[name^="chemical_amount"]').each(function(){
+        var id = $(this).attr('name').match(/\[(.*?)\]/)[1]; // extract the id from name="chemical_amount[id]"
+        var value = $(this).val();
+        chemicalAmounts[id] = value;
     });
 
+    // Serialize form + add ML data manually
     var frmdata = $(this).serialize() + '&key=addclient_reservation';
+    frmdata += '&chemical_amounts=' + JSON.stringify(chemicalAmounts);
 
     $.ajax({
         type: "POST",
@@ -570,11 +575,19 @@ $('.client_reservation').submit(function(e){
         data: frmdata
     })
     .done(function(data){
-        console.log(data);
+        console.log("Response:", data);
 
-        // Reset form fields
+        // ✅ CHECK FOR PHP ERROR MESSAGE
+        if (typeof data === 'string' && data.startsWith("error:")) {
+            let message = data.replace("error:", "").trim();
+            toastr.error(message);
+            return; // ⛔ Stop here, do not reset or reload table
+        }
+
+        // ✅ If success, clear form + show success
         $('input[name="reserved_date"], input[name="reserved_time"], select[name="reserve_room"]').val('');
         $('.borrowitem, .borrowchemical').val(null).trigger('change');
+        $('#chemical-quantity-container').empty();
 
         if(data == 1){
             toastr.success('Successful. Check your reservation status if your reservation was accommodated.');

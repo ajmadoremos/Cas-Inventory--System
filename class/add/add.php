@@ -443,71 +443,76 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
     global $conn;
     $code = date('mdYhis') . $client_id;
 
-    if($client_id == 0){
+    if ($client_id == 0) {
         echo '3'; // invalid client
         return;
     }
 
     try {
-        // Start transaction para safe
         $conn->beginTransaction();
 
-        // Insert main reservation
+        // ✅ Step 1: Insert reservation
         $sql = $conn->prepare("INSERT INTO reservation 
             (reservation_code, member_id, room_id, reserve_date, reservation_time, assign_room, time_limit) 
             VALUES (?, ?, ?, ?, ?, ?, ?)");
         $sql->execute([$code, $client_id, $assign_room, $date, $time, $assign_room, $timeLimit]);
 
-        // Get the reservation_id
         $reservationId = $conn->lastInsertId();
-
         $count = 0;
 
-        // -----------------------------
-        // Insert equipment items
-        // -----------------------------
-        if(!empty($items)){
-            foreach ($items as $key => $item) {
+        // ✅ Step 2: Insert items (no deduction)
+        if (!empty($items)) {
+            foreach ($items as $item) {
                 $itemsArr = explode("||", $item);
-
                 $sql1 = $conn->prepare("INSERT INTO reservation_items (reservation_id, item_id, stock_id) 
                                         VALUES (?, ?, ?)");
                 $sql1->execute([$reservationId, $itemsArr[0], $itemsArr[1]]);
-
-                if($sql1->rowCount() > 0){
-                    $count++;
-                    // decrease stock
-                    $update = $conn->prepare("UPDATE item_stock SET items_stock = items_stock - 1 WHERE id = ?");
-                    $update->execute([$itemsArr[1]]);
-                }
+                if ($sql1->rowCount() > 0) $count++;
             }
         }
 
-        // -----------------------------
-        // Insert chemicals
-        // -----------------------------
-        if(!empty($chemicals)){
-            foreach ($chemicals as $key => $chemId) {
+        // ✅ Step 3: Insert chemicals (with stock/unit validation)
+        $chemicalAmounts = json_decode($_POST['chemical_amounts'] ?? '{}', true);
+
+        if (!empty($chemicals)) {
+            foreach ($chemicals as $chemId) {
+                $quantity = isset($chemicalAmounts[$chemId]) && is_numeric($chemicalAmounts[$chemId])
+                    ? $chemicalAmounts[$chemId]
+                    : 1;
+
+                // 🔍 Check chemical stock first
+                $check = $conn->prepare("SELECT r_quantity, unit, r_status, r_name FROM chemical_reagents WHERE r_id = ?");
+                $check->execute([$chemId]);
+                $chem = $check->fetch(PDO::FETCH_ASSOC);
+
+                if (!$chem) {
+                    throw new Exception("Chemical not found (ID: $chemId).");
+                }
+
+                // 🔒 Strict condition for stock validation
+                if ($chem['r_status'] === 'Out of Stock' || ($chem['r_quantity'] <= 0 && $chem['unit'] <= 0)) {
+                    throw new Exception("Chemical '{$chem['r_name']}' is out of stock.");
+                }
+
+                // 🧮 Optional: Check if enough unit remains for requested ml
+                if ($chem['unit'] < $quantity && $chem['r_quantity'] <= 0) {
+                    throw new Exception("Not enough stock for '{$chem['r_name']}'. Only {$chem['unit']} ml remaining.");
+                }
+
+                // ✅ Insert reservation if available
                 $sql2 = $conn->prepare("INSERT INTO reservation_chemicals (reservation_id, chemical_id, quantity) 
                                         VALUES (?, ?, ?)");
-                $sql2->execute([$reservationId, $chemId, 1]);
-
-                if($sql2->rowCount() > 0){
-                    $count++;
-                    // decrease chemical quantity
-                    $updateChem = $conn->prepare("UPDATE chemical_reagents SET r_quantity = r_quantity - 1 WHERE r_id = ?");
-                    $updateChem->execute([$chemId]);
-                }
+                $sql2->execute([$reservationId, $chemId, $quantity]);
+                if ($sql2->rowCount() > 0) $count++;
             }
         }
 
-        // Commit if everything is okay
         $conn->commit();
-
         echo ($count > 0) ? '1' : '0';
 
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         $conn->rollBack();
+        // Instead of generic '0', send specific message for frontend toastr
         echo "error: " . $e->getMessage();
     }
 }

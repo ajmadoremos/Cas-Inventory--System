@@ -579,77 +579,160 @@
 		public function borrowreserve($code)
 {
     global $conn;
-
     session_start();
     $sessionid = $_SESSION['admin_id'];
 
-    // ✅ Mark reservation as borrowed
-    $up = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
-    $up->execute([3, $code]);
-    $num = $up->rowCount();
+    try {
+        $conn->beginTransaction();
 
-    if ($num > 0) {
-        $sql = $conn->prepare('SELECT * FROM reservation WHERE reservation_code = ?');
-        $sql->execute([$code]);
-        $fetch = $sql->fetchAll();
+        // Get reservation
+        $sqlRes = $conn->prepare("SELECT * FROM reservation WHERE reservation_code = ?");
+        $sqlRes->execute([$code]);
+        $reservation = $sqlRes->fetch();
+
+        if (!$reservation) {
+            echo json_encode(["response" => 0, "message" => "Reservation not found"]);
+            return;
+        }
+
+        // Mark reservation as borrowed
+        $up = $conn->prepare("UPDATE reservation SET status = ? WHERE reservation_code = ?");
+        $up->execute([3, $code]);
 
         $borrowIds = [];
+        $emptied_units = [];   // chemicals whose unit reached 0 by this borrow (tell user "wala nang laman")
+        $out_of_stock = [];    // chemicals that are now completely out of stock (r_quantity==0 and unit==0)
 
-        // 🔹 Handle Items
-        foreach ($fetch as $value) {
-            $insert = $conn->prepare('
+        // Handle Items (unchanged)
+        $sqlItems = $conn->prepare("SELECT * FROM reservation_items WHERE reservation_id = ?");
+        $sqlItems->execute([$reservation['id']]);
+        $items = $sqlItems->fetchAll();
+
+        foreach ($items as $item) {
+            $insert = $conn->prepare("
                 INSERT INTO borrow (borrowcode, member_id, item_id, stock_id, user_id, room_assigned, time_limit)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ');
+            ");
             $insert->execute([
                 $code,
-                $value['member_id'],
-                $value['item_id'],
-                $value['stock_id'],
+                $reservation['member_id'],
+                $item['item_id'],
+                $item['stock_id'],
                 $sessionid,
-                $value['assign_room'],
-                $value['time_limit']
+                $reservation['assign_room'],
+                $reservation['time_limit']
             ]);
 
             $borrowId = $conn->lastInsertId();
             $borrowIds[] = $borrowId;
 
-            if ($borrowId) {
-                // Deduct from item stock
-                $update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
-                $update->execute([1, $value['stock_id']]);
+            // Deduct item stock
+            $update = $conn->prepare("UPDATE item_stock SET items_stock = items_stock - 1 WHERE id = ?");
+            $update->execute([$item['stock_id']]);
+        }
 
-                // 🔹 Also check if this reservation has chemicals linked
-                $sqlChem = $conn->prepare("
-                    SELECT rc.chemical_id, rc.quantity
-                    FROM reservation_chemicals rc
-                    WHERE rc.reservation_id = ?
+        // Handle Chemicals
+        $sqlChem = $conn->prepare("SELECT * FROM reservation_chemicals WHERE reservation_id = ?");
+        $sqlChem->execute([$reservation['id']]);
+        $chems = $sqlChem->fetchAll();
+
+        foreach ($chems as $chem) {
+            // Prepare borrow_chemicals insert
+            $insertChem = $conn->prepare("
+                INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity)
+                VALUES (?, ?, ?)
+            ");
+
+            // Determine borrow parent id (create dummy borrow if no item)
+            $borrowId = !empty($borrowIds) ? end($borrowIds) : null;
+            if ($borrowId === null) {
+                $insertBorrow = $conn->prepare("
+                    INSERT INTO borrow (borrowcode, member_id, user_id, room_assigned, time_limit)
+                    VALUES (?, ?, ?, ?, ?)
                 ");
-                $sqlChem->execute([$value['id']]);
-                $chemicals = $sqlChem->fetchAll();
+                $insertBorrow->execute([
+                    $code,
+                    $reservation['member_id'],
+                    $sessionid,
+                    $reservation['assign_room'],
+                    $reservation['time_limit']
+                ]);
+                $borrowId = $conn->lastInsertId();
+                $borrowIds[] = $borrowId;
+            }
 
-                foreach ($chemicals as $chem) {
-                    // Insert chemical borrow record
-                    $insertChem = $conn->prepare("
-                        INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity)
-                        VALUES (?, ?, ?)
-                    ");
-                    $insertChem->execute([$borrowId, $chem['chemical_id'], $chem['quantity']]);
+            // Insert borrow_chemicals record
+            $insertChem->execute([$borrowId, $chem['chemical_id'], $chem['quantity']]);
 
-                    // Deduct chemical stock
-                    $updateChem = $conn->prepare("UPDATE chemical_reagents SET r_quantity = r_quantity - ? WHERE r_id = ?");
-                    $updateChem->execute([$chem['quantity'], $chem['chemical_id']]);
+            // Fetch current chemical info (including name for messages)
+            $getChem = $conn->prepare("SELECT r_id, r_name, unit, r_quantity FROM chemical_reagents WHERE r_id = ?");
+            $getChem->execute([$chem['chemical_id']]);
+            $chemical = $getChem->fetch(PDO::FETCH_ASSOC);
+
+            if ($chemical) {
+                $currentQuantity = (int)$chemical['r_quantity'];
+                $currentUnit = (int)$chemical['unit'];
+                $borrowAmount = (int)$chem['quantity'];
+                $chemName = $chemical['r_name'];
+
+                // If already completely empty, mark Out of Stock and skip
+                if ($currentQuantity <= 0 && $currentUnit <= 0) {
+                    // ensure status set
+                    $updateStatus = $conn->prepare("UPDATE chemical_reagents SET r_status = 'Out of Stock' WHERE r_id = ?");
+                    $updateStatus->execute([$chem['chemical_id']]);
+                    if (!in_array($chemName, $out_of_stock)) $out_of_stock[] = $chemName;
+                    continue;
                 }
+
+                // Deduct from unit first
+                $newUnit = $currentUnit - $borrowAmount;
+                $newQuantity = $currentQuantity;
+
+                if ($newUnit <= 0) {
+                    // Unit depleted — set unit to 0 and reduce quantity by 1 (if any)
+                    $newUnit = 0;
+                    if ($currentQuantity > 0) {
+                        $newQuantity = $currentQuantity - 1;
+                    } else {
+                        $newQuantity = 0;
+                    }
+
+                    // record that unit got emptied (user-visible message)
+                    if (!in_array($chemName, $emptied_units)) $emptied_units[] = $chemName;
+                }
+
+                // Determine status
+                if ($newQuantity <= 0 && $newUnit <= 0) {
+                    $newStatus = 'Out of Stock';
+                    if (!in_array($chemName, $out_of_stock)) $out_of_stock[] = $chemName;
+                } else {
+                    $newStatus = 'Available';
+                }
+
+                // Update chemical_reagents (no reset of unit)
+                $updateChem = $conn->prepare("
+                    UPDATE chemical_reagents 
+                    SET unit = ?, r_quantity = ?, r_status = ?
+                    WHERE r_id = ?
+                ");
+                $updateChem->execute([$newUnit, $newQuantity, $newStatus, $chem['chemical_id']]);
             }
         }
 
+        $conn->commit();
+
+        // Return success + info about emptied / out-of-stock chemicals
         echo json_encode([
             "response" => 1,
             "message" => "Successfully Borrowed",
-            "borrowIds" => implode("|", $borrowIds)
+            "borrowIds" => implode("|", $borrowIds),
+            "emptied_units" => $emptied_units,    // chemical names whose unit reached 0 in this operation
+            "out_of_stock" => $out_of_stock       // chemical names now fully out of stock
         ]);
-    } else {
-        echo json_encode(["response" => 0]);
+
+    } catch (Exception $e) {
+        $conn->rollBack();
+        echo json_encode(["response" => 0, "message" => $e->getMessage()]);
     }
 }
 

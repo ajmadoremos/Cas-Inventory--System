@@ -42,7 +42,12 @@ date_default_timezone_set('Asia/Manila');
 
 				<div class="row">
 					<div class="panel panel-default">
-						<div class="panel-heading"><svg class="glyph stroked email"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#stroked-email"></use></svg> Make Reservation</div>
+						<div class="panel-heading">
+							<svg class="glyph stroked email">
+								<use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#stroked-email"></use>
+							</svg> 
+							Make Reservation
+						</div>
 						<div class="panel-body">
 							<form class="form-horizontal client_reservation" action="" >
 								<fieldset>
@@ -54,6 +59,7 @@ date_default_timezone_set('Asia/Manila');
 											</select>
 										</div>
 									</div>
+
 									<div class="form-group">
     									<label class="col-md-3 control-label" for="chemicals">Chemicals (maximum of 5)</label>
     									<div class="col-md-9">
@@ -61,7 +67,11 @@ date_default_timezone_set('Asia/Manila');
             									<option></option>
         									</select>
     									</div>
+
+										<!-- ✅ Step 1: Added container for ML input -->
+										<div id="chemical-quantity-container" class="col-md-9 col-md-offset-3 mt-2"></div>
 									</div>
+
 									<div class="form-group">
 										<label class="col-md-3 control-label" for="email">Date </label>
 										<div class="col-md-9">
@@ -120,4 +130,25 @@ $(document).ready(function(){
 		step: 15
 	});
 });
+$('.borrowchemical').on('change', function() {
+    let selected = $(this).find('option:selected');
+    let container = $('#chemical-quantity-container');
+    container.empty(); // clear previous inputs
+
+    selected.each(function() {
+        let chemName = $(this).text(); // ✅ Get the displayed name
+        let chemValue = $(this).val(); // (optional: keep the value if needed)
+
+        let inputHtml = `
+            <div class="form-group mt-1">
+			<div class="col-md-9">
+                <label>${chemName} - Amount (ml):</label>
+                <input type="number" name="chemical_amount[${chemValue}]" class="form-control" placeholder="Enter amount in ml" min="1" required>
+            </div>
+			</div>
+        `;
+        container.append(inputHtml);
+    });
+});
+
 </script>
