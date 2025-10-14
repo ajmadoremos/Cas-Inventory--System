@@ -333,7 +333,7 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
 
 
 
-		public function add_borrower($name,$item,$chemical,$id,$reserve_room,$timeLimit)
+		public function add_borrower($name, $item, $chemical, $id, $reserve_room, $timeLimit)
 {
     global $conn;
 
@@ -343,70 +343,103 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
     $sessionid = $_SESSION['admin_id'];
     $sessiontype = $_SESSION['admin_type'];
 
-    $code = date('mdYHis').''.$id;
+    $code = date('mdYHis') . '' . $id;
 
+    // 🔎 Check if user has 3 active borrows
     $select = $conn->prepare('SELECT * FROM borrow WHERE member_id = ? AND status = ? GROUP BY borrowcode');
-    $select->execute(array($name,1));
+    $select->execute([$name, 1]);
     $row = $select->rowCount();
-    if($row == 3)
-    {
-        echo json_encode(array("response" => 0, "message" => 'Unable to process your transaction. Please return first your borrowed items/chemicals'));
+
+    if ($row >= 3) {
+        echo json_encode([
+            "response" => 0,
+            "message" => 'Unable to process your transaction. Please return first your borrowed items/chemicals'
+        ]);
+        return;
     }
-    else
-    {
-        $borrowIds = array();
 
-        /** -------------------------
-         *  Process Equipment Items
-         * ------------------------- */
-        if(!empty($item)){
-            foreach ($item as $key => $items)
-            {
-                $itemsArr = explode("||",$items);
-                $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,item_id,stock_id,user_id,room_assigned,time_limit) 
-                                       VALUES(?,?,?,?,?,?,?)');
-                $sql->execute(array($code,$name,$itemsArr[0],$itemsArr[1],$id,$reserve_room,$timeLimit));
-                $count = $sql->rowCount();
-                $borrowId = $conn->lastInsertId();
-                $borrowIds[] = $borrowId;
+    $borrowIds = [];
 
-                if($count > 0){
-                    $update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
-                    $update->execute(array(1,$itemsArr[1]));
-                }
-            }
-        }
-
-        /** -------------------------
-         *  Process Chemicals
-         * ------------------------- */
-        if(!empty($chemical)){
-            // First create a borrow record (for this borrow transaction)
-            $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,user_id,room_assigned,time_limit) 
-                                   VALUES(?,?,?,?,?)');
-            $sql->execute(array($code,$name,$id,$reserve_room,$timeLimit));
+    /** -------------------------
+     *  ✅ Process Equipment Items
+     * ------------------------- */
+    if (!empty($item)) {
+        foreach ($item as $key => $items) {
+            $itemsArr = explode("||", $items);
+            $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,item_id,stock_id,user_id,room_assigned,time_limit) 
+                                   VALUES(?,?,?,?,?,?,?)');
+            $sql->execute([$code, $name, $itemsArr[0], $itemsArr[1], $id, $reserve_room, $timeLimit]);
+            $count = $sql->rowCount();
             $borrowId = $conn->lastInsertId();
             $borrowIds[] = $borrowId;
 
-            foreach ($chemical as $key => $chemData)
-            {
-                // if format = "chemId||quantity", split it
-                $chemArr = explode("||",$chemData);
-                $chemId = $chemArr[0];
-                $qty    = isset($chemArr[1]) ? (int)$chemArr[1] : 1;
-
-                // Insert into borrow_chemicals
-                $sqlChem = $conn->prepare('INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity) VALUES(?,?,?)');
-                $sqlChem->execute(array($borrowId,$chemId,$qty));
-
-                // Update stock
-                $update = $conn->prepare('UPDATE chemical_reagents SET r_quantity = (r_quantity - ?) WHERE r_id = ?');
-                $update->execute(array($qty,$chemId));
+            if ($count > 0) {
+                $update = $conn->prepare('UPDATE item_stock SET items_stock = (items_stock - ?) WHERE id = ?');
+                $update->execute([1, $itemsArr[1]]);
             }
         }
+    }
 
-        echo json_encode(array("response" => 1, "message" => "Successfully Borrowed", "borrowIds" => implode("|",$borrowIds)));
-    }           
+    /** -------------------------
+     *  ✅ Process Chemicals (unit-based deduction)
+     * ------------------------- */
+    if (!empty($chemical)) {
+        // Create single borrow entry for all chemicals
+        $sql = $conn->prepare('INSERT INTO borrow (borrowcode,member_id,user_id,room_assigned,time_limit) 
+                               VALUES(?,?,?,?,?)');
+        $sql->execute([$code, $name, $id, $reserve_room, $timeLimit]);
+        $borrowId = $conn->lastInsertId();
+        $borrowIds[] = $borrowId;
+
+        foreach ($chemical as $key => $chemData) {
+            $chemArr = explode("||", $chemData);
+            $chemId = $chemArr[0];
+            $qtyMl  = isset($chemArr[1]) ? (float)$chemArr[1] : 1; // ml borrowed
+
+            // Get current stock info
+            $check = $conn->prepare('SELECT r_quantity, unit, r_name FROM chemical_reagents WHERE r_id = ?');
+            $check->execute([$chemId]);
+            $chem = $check->fetch(PDO::FETCH_ASSOC);
+
+            if (!$chem) continue;
+
+            $currentQty = (int)$chem['r_quantity'];
+            $currentUnit = (float)$chem['unit'];
+
+            // If not enough ml left in unit
+            if ($qtyMl > $currentUnit && $currentQty <= 0) {
+                echo json_encode([
+                    "response" => 0,
+                    "message" => "Not enough stock for '{$chem['r_name']}'. Only {$currentUnit} ml remaining."
+                ]);
+                return;
+            }
+
+            // Deduct ml from unit
+            $newUnit = $currentUnit - $qtyMl;
+            $newQty = $currentQty;
+
+            // If unit runs out, deduct 1 from main quantity
+            if ($newUnit <= 0) {
+                $newQty = max(0, $currentQty - 1);
+                $newUnit = 0; // stay zero until admin resets
+            }
+
+            // Update stock in database
+            $update = $conn->prepare('UPDATE chemical_reagents SET unit = ?, r_quantity = ? WHERE r_id = ?');
+            $update->execute([$newUnit, $newQty, $chemId]);
+
+            // Insert borrow_chemical record
+            $sqlChem = $conn->prepare('INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity) VALUES(?,?,?)');
+            $sqlChem->execute([$borrowId, $chemId, $qtyMl]);
+        }
+    }
+
+    echo json_encode([
+        "response" => 1,
+        "message" => "Successfully Borrowed",
+        "borrowIds" => implode("|", $borrowIds)
+    ]);
 }
 
 		public function add_users($u_fname,$u_username,$u_password,$u_type)

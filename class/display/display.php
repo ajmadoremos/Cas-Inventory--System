@@ -804,6 +804,14 @@ public function display_borrow()
 {
     global $conn;
 
+    // Helper function to safely convert array or string to string
+    function safe_string($val) {
+        if (is_array($val)) {
+            return implode(' - ', array_map('safe_string', $val)); // recursive join
+        }
+        return (string)$val;
+    }
+
     $sql = $conn->prepare('
         SELECT 
             b.id,
@@ -813,145 +821,113 @@ public function display_borrow()
             b.stock_id,
             m.m_fname, m.m_lname,
             ro.rm_name,
-            rs.remark,
             rs.temp_approved_items
         FROM borrow b
         LEFT JOIN member m ON m.id = b.member_id
         LEFT JOIN room ro ON ro.id = b.room_assigned
         LEFT JOIN reservation_status rs ON rs.reservation_code = b.borrowcode
         WHERE b.status = ?
-        ORDER BY b.borrowcode, b.id
+        ORDER BY b.date_borrow ASC, b.id ASC
     ');
     $sql->execute([1]);
     $fetch = $sql->fetchAll(PDO::FETCH_ASSOC);
 
-    $grouped = [];
+    $data['data'] = [];
 
-    foreach ($fetch as $row) {
-        $code = $row['borrowcode'];
+    foreach ($fetch as $value) {
+        $items_display = "";
+        $chems_display = "";
 
-        if (!isset($grouped[$code])) {
-            $grouped[$code] = [
-                'id'         => $row['id'],
-                'borrowcode' => $code,
-                'date_borrow'=> $row['date_borrow'],
-                'member_id'  => $row['member_id'],
-                'fname'      => $row['m_fname'],
-                'lname'      => $row['m_lname'],
-                'rm_name'    => $row['rm_name'],
-                'items'      => [],
-                'chems'      => []
-            ];
-        }
-
-        // ✅ Prefer JSON-based temp_approved_items if available
-        $approved = [];
-        if (!empty($row['temp_approved_items'])) {
-            $decoded = json_decode($row['temp_approved_items'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $approved = $decoded;
-            }
-        }
-
-        // ✅ Fill from JSON data first
-        if (!empty($approved)) {
-            if (!empty($approved['items'])) {
-                foreach ($approved['items'] as $item) {
-                    $grouped[$code]['items'][] = htmlspecialchars(trim($item), ENT_QUOTES, 'UTF-8');
+        // CASE 1: temp_approved_items exists (JSON)
+        if (!empty($value['temp_approved_items'])) {
+            $approved_arr = json_decode($value['temp_approved_items'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($approved_arr)) {
+                // Items
+                if (!empty($approved_arr['items'])) {
+                    $items_display = "<ul style='margin:0; padding-left:18px;'>";
+                    foreach ($approved_arr['items'] as $item) {
+                        $items_display .= "<li>" . htmlspecialchars(safe_string($item), ENT_QUOTES, 'UTF-8') . "</li>";
+                    }
+                    $items_display .= "</ul>";
+                }
+                // Chemicals (force ml)
+                if (!empty($approved_arr['chemicals'])) {
+                    $chems_display = "<ul style='margin:0; padding-left:18px;'>";
+                    foreach ($approved_arr['chemicals'] as $chem) {
+                        $chems_display .= "<li>" . htmlspecialchars(trim($chem) . " (ml)", ENT_QUOTES, 'UTF-8') . "</li>";
+                    }
+                    $chems_display .= "</ul>";
                 }
             }
-            if (!empty($approved['chemicals'])) {
-                foreach ($approved['chemicals'] as $chem) {
-                    $grouped[$code]['chems'][] = htmlspecialchars(trim($chem), ENT_QUOTES, 'UTF-8');
-                }
-            }
-        } else {
-            // ⚠️ Fallback for old/manual borrow records (no JSON)
-            if (!empty($row['stock_id'])) {
+        }
+
+        // CASE 2: No temp_approved_items → fetch items from stock/item
+        if (empty($items_display)) {
+            if (!empty($value['stock_id'])) {
                 $stmtItems = $conn->prepare("
                     SELECT i.i_deviceID, i.i_category
                     FROM item_stock ist
                     JOIN item i ON i.id = ist.item_id
                     WHERE ist.id = ?
                 ");
-                $stmtItems->execute([$row['stock_id']]);
+                $stmtItems->execute([$value['stock_id']]);
                 $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
-                if (empty($items)) {
-                    $stmtItems2 = $conn->prepare("
-                        SELECT i.i_deviceID, i.i_category 
-                        FROM item i 
-                        WHERE i.id = ?
-                    ");
-                    $stmtItems2->execute([$row['stock_id']]);
-                    $items = $stmtItems2->fetchAll(PDO::FETCH_ASSOC);
-                }
-
-                foreach ($items as $it) {
-                    $dev = $it['i_deviceID'] ?? '';
-                    $cat = $it['i_category'] ?? '';
-                    $grouped[$code]['items'][] = htmlspecialchars(trim($dev . (($dev && $cat) ? ' - ' : '') . $cat), ENT_QUOTES, 'UTF-8');
+                if (!empty($items)) {
+                    $items_display = "<ul style='margin:0; padding-left:18px;'>";
+                    foreach ($items as $item) {
+                        $item_str = ($item['i_deviceID'] ?? '') . (($item['i_deviceID'] && $item['i_category']) ? ' - ' : '') . ($item['i_category'] ?? '');
+                        $items_display .= "<li>" . htmlspecialchars($item_str, ENT_QUOTES, 'UTF-8') . "</li>";
+                    }
+                    $items_display .= "</ul>";
+                } else {
+                    $items_display = "<em>No approved items</em>";
                 }
             }
+        }
 
-            // 🧪 Fetch chemicals if any
-            $stmtChem = $conn->prepare("
-                SELECT c.r_name, c.unit, bc.quantity
-                FROM borrow_chemicals bc
-                JOIN chemical_reagents c ON bc.chemical_id = c.r_id
-                WHERE bc.borrow_id = ?
-            ");
-            $stmtChem->execute([$row['id']]);
-            $chems = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
+        // Fetch chemicals with automatic "ml"
+        $stmtChem = $conn->prepare("
+            SELECT c.r_name, bc.quantity
+            FROM borrow_chemicals bc
+            JOIN chemical_reagents c ON bc.chemical_id = c.r_id
+            WHERE bc.borrow_id = ?
+        ");
+        $stmtChem->execute([$value['id']]);
+        $chems = $stmtChem->fetchAll(PDO::FETCH_ASSOC);
 
+        if (!empty($chems)) {
+            $chems_display = "<ul style='margin:0; padding-left:18px;'>";
             foreach ($chems as $chem) {
-                $rname = $chem['r_name'] ?? '';
-                $qty   = $chem['quantity'] ?? '';
-                $unit  = $chem['unit'] ?? '';
-                $grouped[$code]['chems'][] = htmlspecialchars(trim("$rname ($qty $unit)"), ENT_QUOTES, 'UTF-8');
+                $chem_str = ($chem['r_name'] ?? '') . " ({$chem['quantity']} ml)";
+                $chems_display .= "<li>" . htmlspecialchars(trim($chem_str), ENT_QUOTES, 'UTF-8') . "</li>";
             }
+            $chems_display .= "</ul>";
         }
-    }
 
-    // 🧹 Remove duplicates and reindex arrays
-    foreach ($grouped as &$g) {
-        $g['items'] = array_values(array_unique($g['items']));
-        $g['chems'] = array_values(array_unique($g['chems']));
-    }
-
-    // ✅ Prepare JSON for DataTable
-    $data = ['data' => []];
-    foreach ($grouped as $g) {
         $borrowedDisplay = "<div style='margin:0; padding-left:5px;'>";
-        if (!empty($g['items'])) {
-            $borrowedDisplay .= "<div><strong>📦 Items:</strong><ul style='margin:0; padding-left:18px;'>";
-            foreach ($g['items'] as $item) {
-                $borrowedDisplay .= "<li>{$item}</li>";
-            }
-            $borrowedDisplay .= "</ul></div>";
+        if (!empty($items_display)) {
+            $borrowedDisplay .= "<div><strong>📦 Items:</strong>" . $items_display . "</div>";
         }
-        if (!empty($g['chems'])) {
-            $borrowedDisplay .= "<div><strong>⚗️ Chemicals:</strong><ul style='margin:0; padding-left:18px;'>";
-            foreach ($g['chems'] as $chem) {
-                $borrowedDisplay .= "<li>{$chem}</li>";
-            }
-            $borrowedDisplay .= "</ul></div>";
+        if (!empty($chems_display)) {
+            $borrowedDisplay .= "<div><strong>⚗️ Chemicals:</strong>" . $chems_display . "</div>";
         }
-        if (empty($g['items']) && empty($g['chems'])) {
+        if (empty($items_display) && empty($chems_display)) {
             $borrowedDisplay .= "<em>No borrowed items or chemicals</em>";
         }
         $borrowedDisplay .= "</div>";
 
-        $dataId = htmlspecialchars("{$g['member_id']}/{$g['borrowcode']}", ENT_QUOTES, 'UTF-8');
+        $dataId = htmlspecialchars($value['member_id'] . "/" . $value['borrowcode'], ENT_QUOTES, 'UTF-8');
         $button = "<button class='btn btn-primary' data-id='{$dataId}'>Return <i class='fa fa-chevron-right'></i></button>";
-        $date = !empty($g['date_borrow']) ? date('F d, Y h:i:s A', strtotime($g['date_borrow'])) : '';
+
+        $date = !empty($value['date_borrow']) ? date('F d, Y h:i:s A', strtotime($value['date_borrow'])) : '';
 
         $data['data'][] = [
-            htmlspecialchars(trim(($g['fname'] ?? '') . ' ' . ($g['lname'] ?? '')), ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars(trim($value['m_fname'] . ' ' . $value['m_lname'])),
             $date,
             $borrowedDisplay,
             $button,
-            htmlspecialchars(ucwords($g['rm_name'] ?? ''), ENT_QUOTES, 'UTF-8')
+            htmlspecialchars(ucwords($value['rm_name'] ?? ''))
         ];
     }
 
