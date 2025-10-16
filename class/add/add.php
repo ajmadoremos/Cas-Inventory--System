@@ -391,10 +391,12 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
         $borrowId = $conn->lastInsertId();
         $borrowIds[] = $borrowId;
 
-        foreach ($chemical as $key => $chemData) {
-            $chemArr = explode("||", $chemData);
-            $chemId = $chemArr[0];
-            $qtyMl  = isset($chemArr[1]) ? (float)$chemArr[1] : 1; // ml borrowed
+        foreach ($chemical as $chemId) {
+
+            // ✅ Get the ml value from form input (e.g. $_POST['chemical_amount'][CHEM_ID])
+            $qtyMl = isset($_POST['chemical_amount'][$chemId]) 
+                ? (float)$_POST['chemical_amount'][$chemId] 
+                : 1;
 
             // Get current stock info
             $check = $conn->prepare('SELECT r_quantity, unit, r_name FROM chemical_reagents WHERE r_id = ?');
@@ -422,16 +424,16 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
             // If unit runs out, deduct 1 from main quantity
             if ($newUnit <= 0) {
                 $newQty = max(0, $currentQty - 1);
-                $newUnit = 0; // stay zero until admin resets
+                $newUnit = 0;
             }
 
             // Update stock in database
             $update = $conn->prepare('UPDATE chemical_reagents SET unit = ?, r_quantity = ? WHERE r_id = ?');
             $update->execute([$newUnit, $newQty, $chemId]);
 
-            // Insert borrow_chemical record
-            $sqlChem = $conn->prepare('INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity) VALUES(?,?,?)');
-            $sqlChem->execute([$borrowId, $chemId, $qtyMl]);
+            // Insert borrow_chemical record WITH bc_unit
+            $sqlChem = $conn->prepare('INSERT INTO borrow_chemicals (borrow_id, chemical_id, quantity, bc_unit) VALUES(?,?,?,?)');
+            $sqlChem->execute([$borrowId, $chemId, $qtyMl, "{$qtyMl} ml"]);
         }
     }
 
@@ -441,6 +443,8 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
         "borrowIds" => implode("|", $borrowIds)
     ]);
 }
+
+
 
 		public function add_users($u_fname,$u_username,$u_password,$u_type)
 		{
