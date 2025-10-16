@@ -947,6 +947,7 @@ public function display_borrow()
                     GROUP_CONCAT(item.i_deviceID, ' - ', item.i_category, '<br/>') AS item_borrow,
                     rs.temp_approved_items";
 
+    // ✅ Filtering by month/year (kept same)
     if(isset($_POST['month']) && isset($_POST['year']) && $_POST['month'] != "" && $_POST['year'] != "")
     {
         $sql = $conn->prepare("SELECT $select_base
@@ -1030,10 +1031,10 @@ public function display_borrow()
                 }
             }
 
-            // ✅ Fallback (unchanged)
+            // ✅ Fallback (display actual borrowed chemicals correctly)
             if (empty($approved_items_display)) {
                 $approved_items_display = "<div style='margin:0; padding-left:5px;'>";
-                
+
                 if (!empty($value['item_borrow'])) {
                     $approved_items_display .= "<div><strong>📦 Items:</strong><br/>" . $value['item_borrow'] . "</div>";
                 }
@@ -1041,8 +1042,9 @@ public function display_borrow()
                 $borrow_ids = explode(",", $value['borrow_ids']);
                 $chems = [];
                 foreach ($borrow_ids as $bid) {
+                    // ✅ Get correct display of borrowed chemicals with ml unit
                     $stmtChem = $conn->prepare("
-                        SELECT c.r_name, c.unit, bc.quantity
+                        SELECT c.r_name, bc.quantity, bc.bc_unit
                         FROM borrow_chemicals bc
                         JOIN chemical_reagents c ON bc.chemical_id = c.r_id
                         WHERE bc.borrow_id = ?
@@ -1054,10 +1056,10 @@ public function display_borrow()
                 if (!empty($chems)) {
                     $approved_items_display .= "<div><strong>🧪 Chemicals:</strong><ul style='margin:0; padding-left:18px;'>";
                     foreach ($chems as $chem) {
-                        $rname = $chem['r_name'] ?? '';
-                        $qty   = $chem['quantity'] ?? '';
-                        $unit  = $chem['unit'] ?? '';
-                        $approved_items_display .= "<li>" . htmlspecialchars("$rname ($qty $unit)", ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "</li>";
+                        $rname = htmlspecialchars($chem['r_name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                        $qty   = htmlspecialchars($chem['quantity'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                        $unit  = "ml"; // ✅ Fixed: Always display as ml
+                        $approved_items_display .= "<li>{$rname} ({$qty} {$unit})</li>";
                     }
                     $approved_items_display .= "</ul></div>";
                 }
@@ -1086,6 +1088,7 @@ public function display_borrow()
         echo json_encode($data);
     }
 }
+
 
 		
 	public function pending_reservation()
