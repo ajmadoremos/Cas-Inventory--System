@@ -391,6 +391,7 @@ public function add_reagent($r_name, $r_quantity, $unit, $r_date_received, $r_da
         $borrowId = $conn->lastInsertId();
         $borrowIds[] = $borrowId;
 
+        
         foreach ($chemical as $chemId) {
 
             // ✅ Get the ml value from form input (e.g. $_POST['chemical_amount'][CHEM_ID])

@@ -166,47 +166,45 @@
 
 
 		public function return_item($id)
-		{
-			global $conn;
+{
+    global $conn;
 
-			$date = date('Y-m-d H:i:s');
-			session_start();
-			$session = $_SESSION['admin_id'];
+    // ✅ Make sure we're using Philippine local time
+    date_default_timezone_set('Asia/Manila');
+    $date = date('Y-m-d H:i:s');
 
-			$h_desc = 'return items';
-			$h_tbl = 'borrow';
-			$sessionid = $_SESSION['admin_id'];
-			$sessiontype = $_SESSION['admin_type'];
+    session_start();
+    $session = $_SESSION['admin_id'];
 
+    $h_desc = 'return items';
+    $h_tbl = 'borrow';
+    $sessionid = $_SESSION['admin_id'];
+    $sessiontype = $_SESSION['admin_type'];
 
-			$ids = explode('/', $id);
-			$memid = $ids[0];
-			$borrowcode = $ids[1];
+    $ids = explode('/', $id);
+    $memid = $ids[0];
+    $borrowcode = $ids[1];
 
+    $select = $conn->prepare('SELECT * FROM borrow WHERE borrowcode = ? AND member_id = ?');
+    $select->execute(array($borrowcode, $memid));
+    $fetch = $select->fetchAll();
 
-			$select = $conn->prepare('SELECT * FROM borrow WHERE borrowcode = ? AND member_id = ?');
-			$select->execute(array($borrowcode,$memid));
-			$fetch = $select->fetchAll();
-			$row = $select->rowCount();
-			
-			// $insert = $conn->prepare('INSERT INTO history_logs(description,table_name,user_id,user_type) VALUES(?,?,?,?)');
-	  //  	 	$insert->execute(array($h_desc,$h_tbl,$sessionid,$sessiontype));
-	  //  	 	$rowcou = $insert->rowCount();
+    foreach ($fetch as $key => $value) {
+        $equip = $value['stock_id'];
+        $sql = $conn->prepare('
+            UPDATE borrow 
+            SET status = ?, date_return = ? 
+            WHERE borrowcode = ?;
+            
+            UPDATE item_stock 
+            SET items_stock = (items_stock + ?) 
+            WHERE id = ?
+        ');
+        $sql->execute(array(2, $date, $borrowcode, 1, $equip));
+        echo $sql->rowCount();
+    }
+}
 
-			foreach ($fetch as $key => $value) {
-				$equip = $value['stock_id'];
-				$sql = $conn->prepare('UPDATE borrow SET status = ?, date_return = ? WHERE borrowcode = ?;
-										UPDATE item_stock SET items_stock = (items_stock + ?) WHERE id = ?  ');
-				$sql->execute(array(2,$date,$borrowcode,1,$equip));
-				$count = $sql->rowCount(); 
-				$datakey = $key + 1;
-
-				echo $count;
-
-			}
-
-			
-		}
 
 		public function edititem($e_number,$e_id,$e_category,$e_brand,$e_description,$e_type,$e_model,$e_mr,$e_price)
 		{

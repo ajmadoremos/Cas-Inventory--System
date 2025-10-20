@@ -804,13 +804,13 @@ public function display_borrow()
 {
     global $conn;
 
-    // Helper function to safely convert array or string to string
-    function safe_string($val) {
+    // ✅ Helper function (moved outside the loop)
+    $safe_string = function ($val) use (&$safe_string) {
         if (is_array($val)) {
-            return implode(' - ', array_map('safe_string', $val)); // recursive join
+            return implode(' - ', array_map($safe_string, $val)); // recursive join
         }
         return (string)$val;
-    }
+    };
 
     $sql = $conn->prepare('
         SELECT 
@@ -819,7 +819,8 @@ public function display_borrow()
             b.date_borrow,
             b.member_id,
             b.stock_id,
-            m.m_fname, m.m_lname,
+            m.m_fname, 
+            m.m_lname,
             ro.rm_name,
             rs.temp_approved_items
         FROM borrow b
@@ -838,18 +839,20 @@ public function display_borrow()
         $items_display = "";
         $chems_display = "";
 
-        // CASE 1: temp_approved_items exists (JSON)
+        // ✅ CASE 1: temp_approved_items exists (JSON)
         if (!empty($value['temp_approved_items'])) {
             $approved_arr = json_decode($value['temp_approved_items'], true);
+
             if (json_last_error() === JSON_ERROR_NONE && is_array($approved_arr)) {
                 // Items
                 if (!empty($approved_arr['items'])) {
                     $items_display = "<ul style='margin:0; padding-left:18px;'>";
                     foreach ($approved_arr['items'] as $item) {
-                        $items_display .= "<li>" . htmlspecialchars(safe_string($item), ENT_QUOTES, 'UTF-8') . "</li>";
+                        $items_display .= "<li>" . htmlspecialchars($safe_string($item), ENT_QUOTES, 'UTF-8') . "</li>";
                     }
                     $items_display .= "</ul>";
                 }
+
                 // Chemicals (force ml)
                 if (!empty($approved_arr['chemicals'])) {
                     $chems_display = "<ul style='margin:0; padding-left:18px;'>";
@@ -861,13 +864,13 @@ public function display_borrow()
             }
         }
 
-        // CASE 2: No temp_approved_items → fetch items from stock/item
+        // ✅ CASE 2: No temp_approved_items → fetch items from stock/item
         if (empty($items_display)) {
             if (!empty($value['stock_id'])) {
                 $stmtItems = $conn->prepare("
-                    SELECT i.i_deviceID, i.i_category
-                    FROM item_stock ist
-                    JOIN item i ON i.id = ist.item_id
+                    SELECT i.i_deviceID, i.i_category 
+                    FROM item_stock ist 
+                    JOIN item i ON i.id = ist.item_id 
                     WHERE ist.id = ?
                 ");
                 $stmtItems->execute([$value['stock_id']]);
@@ -876,7 +879,9 @@ public function display_borrow()
                 if (!empty($items)) {
                     $items_display = "<ul style='margin:0; padding-left:18px;'>";
                     foreach ($items as $item) {
-                        $item_str = ($item['i_deviceID'] ?? '') . (($item['i_deviceID'] && $item['i_category']) ? ' - ' : '') . ($item['i_category'] ?? '');
+                        $item_str = ($item['i_deviceID'] ?? '') .
+                            (($item['i_deviceID'] && $item['i_category']) ? ' - ' : '') .
+                            ($item['i_category'] ?? '');
                         $items_display .= "<li>" . htmlspecialchars($item_str, ENT_QUOTES, 'UTF-8') . "</li>";
                     }
                     $items_display .= "</ul>";
@@ -886,11 +891,11 @@ public function display_borrow()
             }
         }
 
-        // Fetch chemicals with automatic "ml"
+        // ✅ Fetch chemicals (auto "ml")
         $stmtChem = $conn->prepare("
-            SELECT c.r_name, bc.quantity
-            FROM borrow_chemicals bc
-            JOIN chemical_reagents c ON bc.chemical_id = c.r_id
+            SELECT c.r_name, bc.quantity 
+            FROM borrow_chemicals bc 
+            JOIN chemical_reagents c ON bc.chemical_id = c.r_id 
             WHERE bc.borrow_id = ?
         ");
         $stmtChem->execute([$value['id']]);
@@ -905,23 +910,29 @@ public function display_borrow()
             $chems_display .= "</ul>";
         }
 
+        // ✅ Final display block
         $borrowedDisplay = "<div style='margin:0; padding-left:5px;'>";
         if (!empty($items_display)) {
-            $borrowedDisplay .= "<div><strong>📦 Items:</strong>" . $items_display . "</div>";
+            $borrowedDisplay .= "<div><strong>📦 Items:</strong> {$items_display}</div>";
         }
         if (!empty($chems_display)) {
-            $borrowedDisplay .= "<div><strong>⚗️ Chemicals:</strong>" . $chems_display . "</div>";
+            $borrowedDisplay .= "<div><strong>⚗️ Chemicals:</strong> {$chems_display}</div>";
         }
         if (empty($items_display) && empty($chems_display)) {
             $borrowedDisplay .= "<em>No borrowed items or chemicals</em>";
         }
         $borrowedDisplay .= "</div>";
 
+        // ✅ Action button
         $dataId = htmlspecialchars($value['member_id'] . "/" . $value['borrowcode'], ENT_QUOTES, 'UTF-8');
         $button = "<button class='btn btn-primary' data-id='{$dataId}'>Return <i class='fa fa-chevron-right'></i></button>";
 
-        $date = !empty($value['date_borrow']) ? date('F d, Y h:i:s A', strtotime($value['date_borrow'])) : '';
+        // ✅ Format date
+        $date = !empty($value['date_borrow']) 
+            ? date('F d, Y h:i:s A', strtotime($value['date_borrow'])) 
+            : '';
 
+        // ✅ Push data row
         $data['data'][] = [
             htmlspecialchars(trim($value['m_fname'] . ' ' . $value['m_lname'])),
             $date,
@@ -938,7 +949,7 @@ public function display_borrow()
 		public function display_return()
 {
     global $conn; 
-    date_default_timezone_set('Asia/Manila'); // ✅ Fix timezone at the start
+    date_default_timezone_set('Asia/Manila'); // ✅ Set timezone once
 
     $select_base = "borrow.borrowcode, 
                     GROUP_CONCAT(borrow.id) AS borrow_ids, 
@@ -947,7 +958,7 @@ public function display_borrow()
                     GROUP_CONCAT(item.i_deviceID, ' - ', item.i_category, '<br/>') AS item_borrow,
                     rs.temp_approved_items";
 
-    // ✅ Filtering by month/year (kept same)
+    // ✅ Filtering by month/year
     if(isset($_POST['month']) && isset($_POST['year']) && $_POST['month'] != "" && $_POST['year'] != "")
     {
         $sql = $conn->prepare("SELECT $select_base
@@ -1042,7 +1053,6 @@ public function display_borrow()
                 $borrow_ids = explode(",", $value['borrow_ids']);
                 $chems = [];
                 foreach ($borrow_ids as $bid) {
-                    // ✅ Get correct display of borrowed chemicals with ml unit
                     $stmtChem = $conn->prepare("
                         SELECT c.r_name, bc.quantity, bc.bc_unit
                         FROM borrow_chemicals bc
@@ -1058,7 +1068,7 @@ public function display_borrow()
                     foreach ($chems as $chem) {
                         $rname = htmlspecialchars($chem['r_name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                         $qty   = htmlspecialchars($chem['quantity'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                        $unit  = "ml"; // ✅ Fixed: Always display as ml
+                        $unit  = "ml";
                         $approved_items_display .= "<li>{$rname} ({$qty} {$unit})</li>";
                     }
                     $approved_items_display .= "</ul></div>";
@@ -1067,10 +1077,10 @@ public function display_borrow()
                 $approved_items_display .= "</div>";
             }
 
-            // ✅ TIME DISPLAY FIX
+            // ✅ FIXED RETURN TIME DISPLAY (no extra +8 hours)
             $date_return = ($value['date_return'] == NULL)
                 ? " --- "
-                : date('F d, Y h:i:s A', strtotime($value['date_return'] . ' +8 hours')); // Adjust to Manila time if stored as UTC
+                : date('F d, Y h:i:s A', strtotime($value['date_return']));
 
             $date_borrow = date('F d, Y h:i:s A', strtotime($value['date_borrow']));
 
@@ -1088,6 +1098,7 @@ public function display_borrow()
         echo json_encode($data);
     }
 }
+
 
 
 		
