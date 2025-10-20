@@ -43,7 +43,7 @@
 							<svg class="glyph stroked download">
 								<use xlink:href="#stroked-download"/>
 							</svg>
-							Borrowed Items
+							Borrowed Items/Chemicals
 						</a>
 					</li>
 					<li>
@@ -51,7 +51,7 @@
 							<svg class="glyph stroked checkmark">
 								<use xlink:href="#stroked-checkmark"/>
 							</svg>
-							Returned Items
+							Returned Items/Chemicals
 						</a>
 					</li>
 				</ul>
@@ -62,7 +62,7 @@
 					<svg class="glyph stroked desktop">
 						<use xlink:href="#stroked-desktop"/>
 					</svg>
-					Item
+					Item/Chemicals
 				</a>
 			</li>
 			<li>
@@ -135,7 +135,7 @@
 									<thead>
 										<tr>
 											<th>Name</th>
-											<th>Items</th>
+											<th>Items/Chemicals</th>
 											<th>Reservation Date</th>
 											<th>Rooms</th>
 											<th>Action</th> <!-- ✅ for Accept & Cancel buttons -->
@@ -150,7 +150,7 @@
 									<thead>
 										<tr>
 											<th>Name</th>
-											<th>Items</th>
+											<th>Items/Chemicals</th>
 											<th>Reservation Date</th>
 											<th>Rooms</th>
 											<th>Action</th>

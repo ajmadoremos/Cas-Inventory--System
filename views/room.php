@@ -44,7 +44,7 @@ include 'header.php';
 						<svg class="glyph stroked download">
 							<use xlink:href="#stroked-download"/>
 						</svg>
-						Borrowed Items
+						Borrowed Items/Chemicals
 					</a>
 				</li>
 				<li>
@@ -52,7 +52,7 @@ include 'header.php';
 						<svg class="glyph stroked checkmark">
 							<use xlink:href="#stroked-checkmark"/>
 						</svg>
-						Returned Items
+						Returned Items/Chemicals
 					</a>
 				</li>
 			</ul>
@@ -64,7 +64,7 @@ include 'header.php';
 				<svg class="glyph stroked desktop">
 					<use xlink:href="#stroked-desktop"/>
 				</svg>
-				Item
+				Item/Chemical
 			</a>
 		</li>
 		<li>

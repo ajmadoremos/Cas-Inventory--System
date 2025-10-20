@@ -45,7 +45,7 @@
 							<svg class="glyph stroked download">
 								<use xlink:href="#stroked-download"/>
 							</svg>
-							Borrowed Items
+							Borrowed Items/Chemicals
 						</a>
 					</li>
 					<li class="active">
@@ -53,7 +53,7 @@
 							<svg class="glyph stroked checkmark">
 								<use xlink:href="#stroked-checkmark"/>
 							</svg>
-							Returned Items
+							Returned Items/Chemicals
 						</a>
 					</li>
 				</ul>
@@ -64,7 +64,7 @@
 					<svg class="glyph stroked desktop">
 						<use xlink:href="#stroked-desktop"/>
 					</svg>
-					Item
+					Item/Chemical
 				</a>
 			</li>
 			<li>
@@ -113,7 +113,7 @@
 		<div class="row">
 			<ol class="breadcrumb">
 				<li><a href="dashboard"><svg class="glyph stroked home"><use xlink:href="#stroked-home"></use></svg></a></li>
-				<li class="active">Returned Items</li>
+				<li class="active">Returned Items/Chemicals</li>
 			</ol>
 		</div><!--/.row-->
 
@@ -125,7 +125,7 @@
 							<thead>
 								<tr>
 									<th>Borrower Name</th>
-									<th>Returned Items</th>
+									<th>Returned Items/Chemicals</th>
 									<th>Borrowed Date</th>
 									<th>Returned Date</th>
 									

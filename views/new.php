@@ -37,19 +37,19 @@ include 'header.php';
 				<li>
 					<a class="" href="borrow">
 						<svg class="glyph stroked download"><use xlink:href="#stroked-download"/></svg>
-						Borrowed Items
+						Borrowed Items/Chemicals
 					</a>
 				</li>
 				<li>
 					<a class="" href="return">
 						<svg class="glyph stroked checkmark"><use xlink:href="#stroked-checkmark"/></svg>
-						Returned Items
+						Returned Items/Chemicals
 					</a>
 				</li>
 			</ul>
 		</li>
 		<?php if($_SESSION['admin_type'] == 1){ ?>
-		<li><a href="items"><svg class="glyph stroked desktop"><use xlink:href="#stroked-desktop"/></svg>Item</a></li>
+		<li><a href="items"><svg class="glyph stroked desktop"><use xlink:href="#stroked-desktop"/></svg>Item/Chemical</a></li>
 		<li><a href="members"><svg class="glyph stroked male user "><use xlink:href="#stroked-male-user"/></svg>Borrower</a></li>
 		<li><a href="room"><svg class="glyph stroked app-window"><use xlink:href="#stroked-app-window"></use></svg>Room</a></li>
 		<li><a href="inventory"><svg class="glyph stroked clipboard with paper"><use xlink:href="#stroked-clipboard-with-paper"/></svg>Inventory</a></li>
@@ -74,7 +74,7 @@ include 'header.php';
 			<div class="col-md-8 col-sm-12 col-xs-12 col-md-offset-2">
 				<div class="panel panel-primary custom-panel">
 					<div class="panel-heading">
-						<i class="fa fa-plus-circle"></i> Borrow Item/s
+						<i class="fa fa-plus-circle"></i> Borrow Item/s/Chemical/s
 					</div>
 					<div class="panel-body">
 						<form class="frm_borrow">

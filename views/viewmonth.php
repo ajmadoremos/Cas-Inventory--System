@@ -12,7 +12,7 @@
 			<ul class="children collapse" id="sub-item-1">
 				<li><a href="reservation"><svg class="glyph stroked eye"><use xlink:href="#stroked-eye"/></svg>Reservations</a></li>
 				<li><a href="new"><svg class="glyph stroked plus sign"><use xlink:href="#stroked-plus-sign"/></svg>New</a></li>
-				<li><a href="borrow"><svg class="glyph stroked download"><use xlink:href="#stroked-download"/></svg>Borrowed Items</a></li>
+				<li><a href="borrow"><svg class="glyph stroked download"><use xlink:href="#stroked-download"/></svg></a></li>
 				<li><a href="return"><svg class="glyph stroked checkmark"><use xlink:href="#stroked-checkmark"/></svg>Returned Items</a></li>
 			</ul>
 		</li>
