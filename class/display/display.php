@@ -1414,11 +1414,21 @@ public function display_borrow()
     $session = $_SESSION['member_id'];
 
     $sql = $conn->prepare('
-        SELECT reservation.*, reservation_status.remark, reservation_status.temp_approved_items, room.rm_name, member.m_fname, member.m_lname,
-               GROUP_CONCAT(item.i_deviceID, " - ", item.i_category, " (", reservation_items.quantity, ")") AS item_borrow
+        SELECT 
+            reservation.*, 
+            reservation_status.remark, 
+            reservation_status.temp_approved_items, 
+            reservation_status.temp_feedback,
+            room.rm_name, 
+            member.m_fname, 
+            member.m_lname,
+            GROUP_CONCAT(DISTINCT CONCAT(item.i_deviceID, " - ", item.i_category, " (", reservation_items.quantity, ")")) AS item_borrow,
+            GROUP_CONCAT(DISTINCT CONCAT(chemical_reagents.r_name, " (", reservation_chemicals.quantity, ")")) AS chem_borrow
         FROM reservation
         LEFT JOIN reservation_items ON reservation_items.reservation_id = reservation.id
         LEFT JOIN item ON item.id = reservation_items.item_id
+        LEFT JOIN reservation_chemicals ON reservation_chemicals.reservation_id = reservation.id
+        LEFT JOIN chemical_reagents ON chemical_reagents.r_id = reservation_chemicals.chemical_id
         LEFT JOIN member ON member.id = reservation.member_id
         LEFT JOIN room ON room.id = reservation.assign_room
         LEFT JOIN reservation_status ON reservation_status.reservation_code = reservation.reservation_code
@@ -1431,49 +1441,124 @@ public function display_borrow()
     $data['data'] = [];
 
     foreach ($fetch as $value) {
-        // Map status
+        // 🔹 Status mapping
         $status = match($value['status']) {
             0 => 'Pending',
             1 => 'Accepted',
             2 => 'Cancelled',
             3 => 'Borrowed',
+            4 => 'Returned',
             default => 'Unknown'
         };
 
-        // Reservation date
-        $date = date('F d, Y H:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
+        // 🔹 Date display
+        $date = date('F d, Y h:i:s A', strtotime($value['reserve_date'].' '.$value['reservation_time']));
 
-        // Items display: use temp_approved_items JSON if available
-        $itemsDisplay = $value['item_borrow'];
+        // 🔹 Borrowed items/chemicals display
+        $itemsDisplay = "";
+        if (!empty($value['item_borrow'])) {
+            $itemsDisplay .= "<strong>📦 Items Borrowed:</strong><br>" . str_replace(",", "<br>", $value['item_borrow']) . "<br>";
+        }
+        if (!empty($value['chem_borrow'])) {
+            $itemsDisplay .= "<strong>⚗️ Chemicals Borrowed:</strong><br>" . str_replace(",", "<br>", $value['chem_borrow']) . "<br>";
+        }
+        if (empty($itemsDisplay)) {
+            $itemsDisplay = "<em>No items or chemicals listed.</em>";
+        }
+
+        // 🔹 Parse accepted, rejected, and feedback
+        $acceptedList = [];
+        $rejectedList = [];
+        $feedbackText = "";
+
+        // ✅ Parse accepted (from temp_approved_items JSON)
         if (!empty($value['temp_approved_items'])) {
             $decoded = json_decode($value['temp_approved_items'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $itemsDisplay = "";
-                if (!empty($decoded['items'])) {
-                    $itemsDisplay .= "<strong>📦 Items:</strong><br/>" . implode("<br/>", $decoded['items']) . "<br/>";
-                }
-                if (!empty($decoded['chemicals'])) {
-                    $itemsDisplay .= "<strong>⚗️ Chemicals:</strong><br/>" . implode("<br/>", $decoded['chemicals']) . "<br/>";
+                foreach (['items', 'chemicals', 'approved_items', 'approved_chemicals'] as $key) {
+                    if (!empty($decoded[$key]) && is_array($decoded[$key])) {
+                        foreach ($decoded[$key] as $entry) {
+                            $acceptedList[] = htmlspecialchars(trim($entry));
+                        }
+                    }
                 }
             }
         }
 
-        // Remarks: use human-readable string from remark column
-        $remarks = $value['remark'] ?: "No remarks available.";
+        // ✅ Parse rejected + feedback from temp_feedback (formatted text)
+        $rawFeedback = $value['temp_feedback'] ?? '';
+        $cleanText = trim(strip_tags($rawFeedback));
 
-        // Push to DataTable
+        // Extract rejected items (Not Approved section)
+        if (preg_match('/Not\s*Approved:\s*(.*?)(?=Feedback|$)/is', $cleanText, $rejMatch)) {
+            $rejectedRaw = trim($rejMatch[1]);
+            $rejectedItems = preg_split('/[\r\n]+|<br\s*\/?>|,/', $rejectedRaw);
+            foreach ($rejectedItems as $rej) {
+                $r = trim($rej, "- \t");
+                if ($r !== '') {
+                    $rejectedList[] = htmlspecialchars($r);
+                }
+            }
+        }
+
+        // Extract feedback (Feedback on Not Approved section)
+        if (preg_match('/Feedback\s*on\s*Not\s*Approved:\s*(.*)$/is', $cleanText, $fbMatch)) {
+            $feedbackText = trim($fbMatch[1]);
+        }
+
+        // Clean up placeholder feedback
+        $lc = strtolower($feedbackText);
+        if (
+            str_contains($lc, 'no items') ||
+            str_contains($lc, 'no feedback') ||
+            str_contains($lc, 'no items approved')
+        ) {
+            $feedbackText = '';
+        }
+
+        // ✅ Detect if all items and chemicals were approved
+        $allAccepted = false;
+        $totalBorrowed = 0;
+        if (!empty($value['item_borrow'])) $totalBorrowed += count(explode(",", $value['item_borrow']));
+        if (!empty($value['chem_borrow'])) $totalBorrowed += count(explode(",", $value['chem_borrow']));
+        if (!empty($acceptedList) && count($acceptedList) >= $totalBorrowed && empty($rejectedList)) {
+            $allAccepted = true;
+        }
+
+        // ✅ Construct remarks layout cleanly
+        if ($allAccepted) {
+            $remarksDisplay = "<div style='color:green; font-weight:bold; text-align:center;'>Accepted all items and chemicals.</div>";
+        } else {
+            $remarksDisplay = "<div style='line-height:1.6'>";
+            $remarksDisplay .= "<strong>Accepted items/chemicals:</strong><br>";
+            $remarksDisplay .= !empty($acceptedList) ? implode("<br>", $acceptedList) : "<em>None</em>";
+            $remarksDisplay .= "<br><br>";
+
+            $remarksDisplay .= "<strong>Rejected items/chemicals:</strong><br>";
+            $remarksDisplay .= !empty($rejectedList)
+                ? "<span style='color:#a00;'>" . implode("<br>", $rejectedList) . "</span>"
+                : "<em>None</em>";
+            $remarksDisplay .= "<br><br>";
+
+            $remarksDisplay .= "<strong>Admin feedback:</strong><br>";
+            $remarksDisplay .= !empty($feedbackText)
+                ? "<span style='color:#555;'>" . nl2br(htmlspecialchars($feedbackText)) . "</span>"
+                : "<em>No feedback given.</em>";
+            $remarksDisplay .= "</div>";
+        }
+
+        // 🔹 Combine and push to DataTable
         $data['data'][] = [
             $date,
             $itemsDisplay,
             ucwords($value['rm_name']),
-            $remarks,
+            $remarksDisplay,
             $status
         ];
     }
 
     echo json_encode($data);
 }
-
 
 
 		public function chart_borrow()

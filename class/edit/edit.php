@@ -445,70 +445,79 @@
     $approvedItemsJson = $_POST['approved_items'] ?? json_encode(["items" => [], "chemicals" => []], JSON_UNESCAPED_UNICODE);
     $feedback = $_POST['admin_feedback'] ?? '';
 
-    // ✅ If frontend didn't send remarks, build a fallback string
-    if (empty(trim($remarks))) {
-        $approvedItems = json_decode($approvedItemsJson, true);
-        $approvedItems = is_array($approvedItems) ? $approvedItems : ["items" => [], "chemicals" => []];
+    // Decode approved items JSON
+    $approvedItems = json_decode($approvedItemsJson, true);
+    $approvedItems = is_array($approvedItems) ? $approvedItems : ["items" => [], "chemicals" => []];
 
-        $approvedItemList = $approvedItems['items'] ?? [];
-        $approvedChemicalList = $approvedItems['chemicals'] ?? [];
+    $approvedItemList = $approvedItems['items'] ?? [];
+    $approvedChemicalList = $approvedItems['chemicals'] ?? [];
 
-        $remarks = "";
+    // ✅ Build remark text (final format)
+    $remarksText = "";
 
-        if (!empty($approvedItemList)) {
-            $remarks .= "Approved Item:\n";
-            foreach ($approvedItemList as $item) {
-                $remarks .= " - " . $item . "\n";
-            }
-            $remarks .= "\n";
+    if (!empty($approvedItemList)) {
+        $remarksText .= "✅ Accepted Items:<br>";
+        foreach ($approvedItemList as $item) {
+            $remarksText .= " - " . htmlspecialchars($item) . "<br>";
         }
-
-        if (!empty($approvedChemicalList)) {
-            $remarks .= "Approved Chemical:\n";
-            foreach ($approvedChemicalList as $chem) {
-                $remarks .= " - " . $chem . "\n";
-            }
-            $remarks .= "\n";
-        }
-
-        if (!empty($feedback)) {
-            $remarks .= "Feedback on Not Approved:\n" . $feedback . "\n";
-        }
-
-        if (empty(trim($remarks))) {
-            $remarks = "No items/chemicals approved.";
-        }
+        $remarksText .= "<br>";
     }
 
-    // ✅ Step 1: Update reservation main table
-    $sql = $conn->prepare('UPDATE reservation SET status = ? WHERE reservation_code = ?');
-    $sql->execute([1, $code]);
+    if (!empty($approvedChemicalList)) {
+        $remarksText .= "✅ Accepted Chemicals:<br>";
+        foreach ($approvedChemicalList as $chem) {
+            $remarksText .= " - " . htmlspecialchars($chem) . "<br>";
+        }
+        $remarksText .= "<br>";
+    }
+
+    if (!empty($feedback)) {
+        $remarksText .= "❌ Not Approved / Feedback:<br>" . nl2br(htmlspecialchars($feedback)) . "<br>";
+    }
+
+    if (empty(trim($remarksText))) {
+        $remarksText = "No items or chemicals were approved.";
+    }
+
+    // ✅ Step 1: Update main reservation table (status + remarks)
+    $sql = $conn->prepare('UPDATE reservation SET status = 1, remarks = ? WHERE reservation_code = ?');
+    $sql->execute([$remarksText, $code]);
 
     if ($sql->rowCount() > 0) {
-        // ✅ Step 2: Save final remarks + structured JSON + feedback
+        // ✅ Step 2: Update or insert reservation_status table
         $stmtCheck = $conn->prepare("SELECT id FROM reservation_status WHERE reservation_code = ?");
         $stmtCheck->execute([$code]);
 
         if ($stmtCheck->rowCount() > 0) {
             $add = $conn->prepare('
                 UPDATE reservation_status
-                SET remark = ?, temp_approved_items = ?, temp_feedback = ?, res_status = 1
-                WHERE reservation_code = ?
+                SET 
+                    remark = :remark,
+                    temp_approved_items = :approved_items,
+                    temp_feedback = :feedback,
+                    res_status = 1
+                WHERE reservation_code = :code
             ');
-            $add->execute([$remarks, $approvedItemsJson, $feedback, $code]);
         } else {
             $add = $conn->prepare('
                 INSERT INTO reservation_status (reservation_code, remark, temp_approved_items, temp_feedback, res_status)
-                VALUES (?, ?, ?, ?, 1)
+                VALUES (:code, :remark, :approved_items, :feedback, 1)
             ');
-            $add->execute([$code, $remarks, $approvedItemsJson, $feedback]);
         }
+
+        $add->execute([
+            ':code' => $code,
+            ':remark' => $remarksText,
+            ':approved_items' => $approvedItemsJson,
+            ':feedback' => $feedback
+        ]);
 
         echo 1;
     } else {
         echo 0;
     }
 }
+
 
 
 		public function cancel_reservation($remarks_cancel,$codereserve)
