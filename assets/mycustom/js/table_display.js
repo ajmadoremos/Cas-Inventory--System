@@ -65,7 +65,7 @@ var table_room =  $('.table_room').DataTable({
 				exportOptions:{
 					columns: [0]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -178,7 +178,7 @@ var table_member =  $('.table_member').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4,5,6]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -262,7 +262,7 @@ var table_user =  $('.table_user').DataTable({
 				exportOptions:{
 					columns: [0,1,2]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -425,7 +425,7 @@ var table_equipment = $('.table_equipment').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -481,7 +481,7 @@ var table_reagent = $('.table_reagent').DataTable({
             extend: "print",
             className: "btn-sm btn-success",
             exportOptions: { columns: [0,1,2,3,4,5,6,7,8] },
-            message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+            message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
                       <h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
                       <h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
                       </center>',
@@ -535,7 +535,7 @@ var table_reagents_available = $('.table_reagents_available').DataTable({
             extend: "print",
             className: "btn-sm btn-success",
             exportOptions:{ columns: [0,1,2,3,4] },
-            message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+            message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
                       <h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
                       <h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6></center>',
             customize: function (win){
@@ -589,7 +589,7 @@ var table_reagents_expired = $('.table_reagents_expired').DataTable({
             extend: "print",
             className: "btn-sm btn-success",
             exportOptions:{ columns: [0,1,2,3,4] },
-            message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+            message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
                       <h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
                       <h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6></center>',
             customize: function (win){
@@ -667,7 +667,7 @@ var table_inventory_new = $('.table_inventory_new').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -746,7 +746,7 @@ var table_inventory_old = $('.table_inventory_old').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -824,7 +824,7 @@ var table_inventory_lost = $('.table_inventory_lost').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -902,7 +902,7 @@ var table_inventory_damaged = $('.table_inventory_damaged').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -955,7 +955,7 @@ $.fn.dataTable.ext.errMode = 'throw'; // Show detailed errors
           extend: "print",
           className: "btn-sm btn-success",
           exportOptions: { columns: [0, 1, 2, 3, 4] },
-          message: '<img src="https://via.placeholder.com/100" height="100px" width="100px" style="position: absolute;top:0;left:80px;">' +
+          message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;">' +
                    '<center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>' +
                    '<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>' +
                    '<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6></center>',
@@ -1009,7 +1009,7 @@ var table_inventory_all = $('.table_inventory_all').DataTable({
       extend: "print",
       className: "btn-sm btn-success",
       exportOptions: { columns: [0, 1, 2, 3] },
-      message:'<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+      message:'<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1286,7 +1286,7 @@ var tbl_borrow = $('.tbl_borrow').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1329,13 +1329,14 @@ var tbl_return = $('.tbl_return').DataTable({
 				"className": "text-center"
 			},
 			{
-				"data": [3],
+				"data": [2],
 				"className": "text-center"
 			},
 			{
-				"data": [2],
+				"data": [3],
 				"className": "text-center"
 			}
+			
 		],
 		dom: "Bfrtip",
 		buttons: [
@@ -1343,37 +1344,37 @@ var tbl_return = $('.tbl_return').DataTable({
 				extend: "copy",
 				className: "btn-sm btn-success",
 				exportOptions:{
-					columns: [0,1,2]
+					columns: [0,1,2,3]
 				}
 			},
 			{
 				extend: "csv",
 				className: "btn-sm btn-success",
 				exportOptions:{
-					columns: [0,1,2]
+					columns: [0,1,2,3]
 				}
 			},
 			{
 				extend: "excel",
 				className: "btn-sm btn-success",
 				exportOptions:{
-					columns: [0,1,2]
+					columns: [0,1,2,3]
 				}
 			},
 			{
 				extend: "pdfHtml5",
 				className: "btn-sm btn-success",
 				exportOptions:{
-					columns: [0,1,2]
+					columns: [0,1,2,3]
 				}
 			},
 			{
 				extend: "print",
 				className: "btn-sm btn-success",
 				exportOptions:{
-					columns: [0,1,2]
+					columns: [0,1,2,3]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1460,7 +1461,7 @@ var tbl_pendingres = $('.tbl_pendingres').DataTable({
 			extend: "print",
 			className: "btn-sm btn-success",
 			exportOptions: { columns: [0,1,2,3] },
-			message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+			message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 						<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 						<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 						</center>',
@@ -1541,7 +1542,7 @@ var tbl_reserved = $('.tbl_reserved').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1620,7 +1621,7 @@ var tbluser_reservation = $('.tbluser_reservation').DataTable({
 				exportOptions:{
 					columns: [0,1,2]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1692,7 +1693,7 @@ var table_history = $('.table_history').DataTable({
 				exportOptions:{
 					columns: [0,1,2]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1776,7 +1777,7 @@ var table_dashboard = $('.table_dashboard').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4,5]
 				},
-				message:'<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message:'<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1855,7 +1856,7 @@ function member_profile(id)
 					exportOptions:{
 						columns: [0,1,2,3]
 					},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -1929,7 +1930,7 @@ var tbluser_inbox = $('.tbluser_inbox').DataTable({
 					exportOptions:{
 						columns: [0,1,2]
 					},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
@@ -2036,7 +2037,7 @@ var table_inventory_transfer = $('.table_inventory_transfer').DataTable({
 				exportOptions:{
 					columns: [0,1,2,3,4]
 				},
-				message: '<img src="https://tse2.mm.bing.net/th?id=OIP._F3gGScXdimdgwVWEMamewHaHa&pid=Api&P=0&h=180/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
+				message: '<img src="../views/logo.png" height="100px" width="100px" style="position: absolute;top:0;left:80px;"><center><h4 style="margin-top:-40px;">REPUBLIC OF THE PHILIPPINES</h4>\
 							<h5>PRESIDENT RAMON MAGSAYSAY STATE UNIVERSITY</h5>\
 							<h6>DEPARTMENT OF COLLEGE OF ARTS AND SCIENCES</h6>\
 							</center>',
