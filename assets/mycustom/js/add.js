@@ -426,60 +426,54 @@ $('.reagent-add').click(function(){
         $('.reagent_info').toggle(effect, options, duration);
     });
 
-    // submit handler
     $('form.frm_radditem').submit(function(e){
-        e.preventDefault();
+    e.preventDefault();
 
-        var qty = $('input[name="reagent_qty"]').val();
-        var unitqty = $('input[name="reagent_unitqty"]').val();
-        var id = $('input[name="id"]').val();
+    var qty = $('input[name="reagent_qty"]').val();
+    var unitqty = $('input[name="reagent_unitqty"]').val();
+    var id = $('input[name="id"]').val();
 
-        // Require at least one field
-        if(!qty && !unitqty){
-            toastr.warning('Please fill at least one quantity field.');
-            return;
-        }
+    if(!qty && !unitqty){
+        toastr.warning('Please fill at least one quantity field.');
+        return;
+    }
 
-        // Build payload depending on which field was filled
-        var postData = { id: id };
-        if(qty){
-            postData.key = 'add_reagentqty';
-            postData.reagent_qty = qty;
-        }
-        if(unitqty){
-            postData.key = 'add_reagentunitqty';
-            postData.reagent_unitqty = unitqty;
-        }
-
-        $.ajax({
+    // Function to handle AJAX for each type
+    function updateQuantity(key, value, selector, label) {
+        return $.ajax({
             type: "POST",
-            url: "../class/add/add", // backend
-            data: postData
-        })
-        .done(function(data){
+            url: "../class/add/add",
+            data: { id: id, key: key, [label]: value }
+        }).done(function(data){
             var ab = data.split('|');  
-            // ab[0] = old qty, ab[1] = new qty
-
-            if(qty){  
-                // Update quantity
-                $('.r_quantity').html(ab[1]);  
-                toastr.success('Quantity updated from ' + ab[0] + ' to ' + ab[1]);
-            }
-            if(unitqty){  
-                // Update unit (ml)
-                $('.unit').html(ab[1] + ' ml');  
-                toastr.success('Quantity (ml) updated from ' + ab[0] + ' ml to ' + ab[1] + ' ml');
-            }
-
-            $('.reagent-info').toggle(effect, options, duration);
-        })
-        .fail(function(){
-            toastr.error('Error adding reagent quantity');
+            $(selector).html(ab[1] + (label === 'reagent_unitqty' ? ' ml' : ''));
+            toastr.success((label === 'reagent_unitqty' ? 'Unit quantity (ml)' : 'Quantity') + 
+                           ' updated from ' + ab[0] + ' to ' + ab[1]);
+        }).fail(function(){
+            toastr.error('Error adding ' + label);
         });
-    });
+    }
+
+    // Run both updates sequentially (if both fields have values)
+    if(qty && unitqty){
+        updateQuantity('add_reagentqty', qty, '.r_quantity', 'reagent_qty').then(function(){
+            return updateQuantity('add_reagentunitqty', unitqty, '.unit', 'reagent_unitqty');
+        }).then(function(){
+            $('.reagent-info').toggle(effect, options, duration);
+        });
+    }
+    else if(qty){
+        updateQuantity('add_reagentqty', qty, '.r_quantity', 'reagent_qty').then(function(){
+            $('.reagent-info').toggle(effect, options, duration);
+        });
+    }
+    else if(unitqty){
+        updateQuantity('add_reagentunitqty', unitqty, '.unit', 'reagent_unitqty').then(function(){
+            $('.reagent-info').toggle(effect, options, duration);
+        });
+    }
 });
-
-
+});
 
 $('.frm_borrow').submit(function(e){
     e.preventDefault();
