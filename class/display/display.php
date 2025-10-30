@@ -1784,32 +1784,61 @@ public function display_borrow()
 		}
 
 		public function tbl_member_profile($id)
-		{
-			global $conn;
+{
+    global $conn;
 
-			$sql = $conn->prepare('SELECT *, borrow.status as statusb FROM borrow
-								 	LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
-								 	LEFT JOIN item ON item.id = item_stock.item_id
-								 	LEFT JOIN member ON member.id = borrow.member_id
-								 	LEFT JOIN room ON room.id = borrow.room_assigned
-								 	WHERE borrow.member_id = ? GROUP BY borrow.borrowcode');
-			$sql->execute(array($id));
-			$row = $sql->rowCount();
-			$fetch = $sql->fetchAll();
+    $sql = $conn->prepare("
+        SELECT 
+            borrow.id AS borrow_id,
+            borrow.borrowcode,
+            borrow.date_borrow,
+            borrow.status AS statusb,
+            room.rm_name,
+            
+            -- 🧰 Borrowed items (grouped)
+            GROUP_CONCAT(DISTINCT CONCAT(item.i_brand, ' - ', item.i_category) SEPARATOR ', ') AS items,
 
-			if($row > 0){
-				foreach ($fetch as $key => $value) {
-					$date = date('F d,Y H:i:s A', strtotime($value['date_borrow']));
-					$status = ($value['statusb'] == 1) ? 'Borrow' : 'Returned';
-					$data['data'][] = array($date,$value['i_brand'].' - '.$value['i_category'],ucwords($value['rm_name']),$status); 
-				}
-				echo json_encode($data);
-			}else{
-				$data['data'] = array();
-				echo json_encode($data);
-			}
+            -- 🧪 Borrowed chemicals (with quantity + unit)
+            GROUP_CONCAT(DISTINCT CONCAT(chemical_reagents.r_name, ' (', borrow_chemicals.quantity, ' ', borrow_chemicals.bc_unit, ')') SEPARATOR ', ') AS chemicals
 
-		}
+        FROM borrow
+        LEFT JOIN item_stock ON item_stock.id = borrow.stock_id
+        LEFT JOIN item ON item.id = item_stock.item_id
+        LEFT JOIN room ON room.id = borrow.room_assigned
+        LEFT JOIN borrow_chemicals ON borrow_chemicals.borrow_id = borrow.id
+        LEFT JOIN chemical_reagents ON chemical_reagents.r_id = borrow_chemicals.chemical_id
+        WHERE borrow.member_id = ?
+        GROUP BY borrow.borrowcode
+    ");
+    $sql->execute([$id]);
+
+    $rows = $sql->fetchAll();
+    $data = ['data' => []];
+
+    if ($rows) {
+        foreach ($rows as $value) {
+            $date = date('F d, Y H:i:s A', strtotime($value['date_borrow']));
+            $status = ($value['statusb'] == 1) ? 'Borrowed' : 'Returned';
+
+            // Combine both item and chemical info
+            $display_items = $value['items'] ?: '—';
+            $display_chems = $value['chemicals'] ?: '—';
+            $combined = "Items: {$display_items}<br>Chemicals: {$display_chems}";
+
+            $data['data'][] = [
+                $date,
+                $combined,
+                ucwords($value['rm_name']),
+                $status
+            ];
+        }
+    } else {
+        $data['data'] = [];
+    }
+
+    echo json_encode($data);
+}
+
 
 		public function display_rooms() {
 	global $conn;

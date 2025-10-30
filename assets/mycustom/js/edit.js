@@ -1072,8 +1072,10 @@ $(document).ready(function () {
                 }
             });
             itemHtml += "</ul>";
+            itemListContainer.html(itemHtml);
+        } else {
+            itemListContainer.html("");
         }
-        itemListContainer.html(itemHtml);
 
         // --- Chemicals ---
         var chemicals = chemicalListContainer.find('li');
@@ -1094,10 +1096,13 @@ $(document).ready(function () {
                 }
             });
             chemicalHtml += "</ul>";
+            chemicalListContainer.html(chemicalHtml);
+        } else {
+            chemicalListContainer.html("");
         }
 
         // --- Feedback + Buttons ---
-        chemicalHtml += `
+        var feedbackAndButtons = `
             <div class="form-group mt-2">
                 <label><strong>Admin Feedback (why not approved):</strong></label>
                 <textarea class="form-control admin-feedback" id="admin_feedback_${id}" rows="3" placeholder="Enter reason here..."></textarea>
@@ -1107,7 +1112,13 @@ $(document).ready(function () {
                 <button class='btn btn-success btn-save' data-id="${id}">Save</button>
             </div>
         `;
-        chemicalListContainer.html(chemicalHtml);
+
+        // ✅ Append feedback/buttons depending on what exists
+        if (chemicals.length > 0) {
+            chemicalListContainer.append(feedbackAndButtons);
+        } else {
+            itemListContainer.append(feedbackAndButtons);
+        }
 
         // Store all items + chemicals
         window.allItems[id] = allItemsList;
@@ -1208,80 +1219,80 @@ $(document).ready(function () {
         $(`.btn-edit[data-id="${id}"], .btn-accept[data-id="${id}"], .btn-cancel[data-id="${id}"]`).show();
     });
 
+    // ✅ ACCEPT Button
     tbl_pendingres.on('click', 'button.btn-accept', function (e) {
-    e.preventDefault();
+        e.preventDefault();
 
-    const code = $(this).data('id');
+        const code = $(this).data('id');
 
-    // Always rely on savedItems
-    let approved = window.savedItems?.[code] || { items: [], chemicals: [] };
-    let allItems = window.allItems?.[code] || [...approved.items, ...approved.chemicals];
+        // Always rely on savedItems
+        let approved = window.savedItems?.[code] || { items: [], chemicals: [] };
+        let allItems = window.allItems?.[code] || [...approved.items, ...approved.chemicals];
 
-    let feedback = window.savedFeedback?.[code]?.trim() || "";
-    const hasDisapproved = (approved.items.length + approved.chemicals.length) < allItems.length;
+        let feedback = window.savedFeedback?.[code]?.trim() || "";
+        const hasDisapproved = (approved.items.length + approved.chemicals.length) < allItems.length;
 
-    if (hasDisapproved && feedback === "") {
-        toastr.warning("Please provide feedback for disapproved items.");
-        return;
-    }
-
-    // 🔹 Build remarks string in requested format
-    let remarks = "";
-
-    if (approved.items.length > 0) {
-        remarks += "Approved Item:<br>";
-        approved.items.forEach(it => {
-            remarks += " - " + it + "<br>";
-        });
-        remarks += "<br>";
-    }
-
-    if (approved.chemicals.length > 0) {
-        remarks += "Approved Chemical:<br>";
-        approved.chemicals.forEach(ch => {
-            remarks += " - " + ch + "<br>";
-        });
-        remarks += "<br>";
-    }
-
-    let notApproved = allItems.filter(x => ![...approved.items, ...approved.chemicals].includes(x));
-    if (notApproved.length > 0) {
-        remarks += "Not Approved:<br>";
-        notApproved.forEach(na => {
-            remarks += " - " + na + "<br>";
-        });
-        remarks += "<br>";
-    }
-
-    if (feedback) {
-        remarks += "Feedback on Not Approved:<br>" + feedback + "<br>";
-    }
-
-    if (remarks.trim() === "") {
-        remarks = "No items/chemicals approved.";
-    }
-
-    $.ajax({
-        type: "POST",
-        url: "../class/edit/edit",
-        data: {
-            key: 'accept_reservation',
-            code: code,
-            approved_items: JSON.stringify(approved), // ✅ send grouped JSON
-            remarks: remarks
-        },
-        success: function (data) {
-            if (data > 0) {
-                toastr.success("Successfully accepted reservation.");
-                tbl_pendingres.ajax.reload(null, false);
-                tbl_reserved.ajax.reload(null, false);
-            } else {
-                toastr.error("Failed to accept reservation.");
-            }
+        if (hasDisapproved && feedback === "") {
+            toastr.warning("Please provide feedback for disapproved items.");
+            return;
         }
-    });
-});
 
+        // 🔹 Build remarks string in requested format
+        let remarks = "";
+
+        if (approved.items.length > 0) {
+            remarks += "Approved Item:<br>";
+            approved.items.forEach(it => {
+                remarks += " - " + it + "<br>";
+            });
+            remarks += "<br>";
+        }
+
+        if (approved.chemicals.length > 0) {
+            remarks += "Approved Chemical:<br>";
+            approved.chemicals.forEach(ch => {
+                remarks += " - " + ch + "<br>";
+            });
+            remarks += "<br>";
+        }
+
+        let notApproved = allItems.filter(x => ![...approved.items, ...approved.chemicals].includes(x));
+        if (notApproved.length > 0) {
+            remarks += "Not Approved:<br>";
+            notApproved.forEach(na => {
+                remarks += " - " + na + "<br>";
+            });
+            remarks += "<br>";
+        }
+
+        if (feedback) {
+            remarks += "Feedback on Not Approved:<br>" + feedback + "<br>";
+        }
+
+        if (remarks.trim() === "") {
+            remarks = "No items/chemicals approved.";
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "../class/edit/edit",
+            data: {
+                key: 'accept_reservation',
+                code: code,
+                approved_items: JSON.stringify(approved), // ✅ send grouped JSON
+                remarks: remarks
+            },
+            success: function (data) {
+                if (data > 0) {
+                    toastr.success("Successfully accepted reservation.");
+                    tbl_pendingres.ajax.reload(null, false);
+                    tbl_reserved.ajax.reload(null, false);
+                } else {
+                    toastr.error("Failed to accept reservation.");
+                }
+            }
+        });
+    });
 });
 
 
